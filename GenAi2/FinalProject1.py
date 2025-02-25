@@ -4,7 +4,7 @@ import os
 import asyncio
 import streamlit as st
 from streamlit.runtime.scriptrunner import add_script_run_ctx  
-from groq import Groq
+
 import chromadb
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -55,7 +55,6 @@ def retrieve_context(query, top_k=3):
     query_embedding = embedding_model.embed_query(query)
     results = collection.query(query_embeddings=[query_embedding], n_results=top_k)
     if results and results.get("documents"):
-        # If documents is a list, join them into a string
         docs = results.get("documents", [[]])[0]
         if isinstance(docs, list):
             return " ".join(docs)
@@ -64,7 +63,6 @@ def retrieve_context(query, top_k=3):
 
 def evaluate_response(user_query, generated_response, context):
     """Evaluate the response by comparing it with the retrieved context."""
-    # If context is a list, join it into a string
     if isinstance(context, list):
         context = " ".join(context)
     if not context or context.strip() == "" or context == "No relevant context found.":
@@ -144,7 +142,6 @@ I want a chatbot that references a PDF about Nandesh Kalashetti’s background, 
    - **Short Answer** (≤6 words, with emojis)  
 2. **Complex Query:** “Tell me more about his advanced projects and how they integrate with cloud platforms.”  
    - **Detailed Explanation** referencing PDF data (projects, certifications, advanced solutions), with structured insights and an empathetic tone.
-
 """
     past_chat_history = get_recent_chat_history()
     retrieved_context = retrieve_context(user_query)
@@ -168,7 +165,7 @@ I want a chatbot that references a PDF about Nandesh Kalashetti’s background, 
         return f"⚠️ API Error: {str(e)}"
 
 # ------------------------------------------------
-# 4. Streamlit Web UI
+# 4. Streamlit Web UI (with Sidebar)
 # ------------------------------------------------
 def add_custom_css():
     st.markdown(
@@ -296,7 +293,6 @@ body {
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 </style>
-
         """,
         unsafe_allow_html=True
     )
@@ -304,12 +300,31 @@ body {
 def streamlit_chat():
     st.set_page_config(page_title="AI Chatbot", page_icon="🤖")
     add_custom_css()
+    
+    # ----------------------------
+    # SIDEBAR (Navbar) Section
+    # ----------------------------
+    st.sidebar.image('photo2.JPG', use_container_width=True)
+    st.sidebar.header("**Nandesh Kalashetti**")
+    st.sidebar.write("GenAi Developer And Full-stack Web-Developer")
+
+    # If your Streamlit version supports `divider='rainbow'`, keep it.
+    # Otherwise, remove `divider='rainbow'` or replace it with st.sidebar.divider().
+    st.sidebar.header("Contact Information", divider='rainbow')
+    st.sidebar.write("Feel free to reach out through the following")
+    st.sidebar.write("[LinkedIn](https://www.linkedin.com/in/nandesh-kalashetti-333a78250/)")
+    st.sidebar.write("[GitHub](https://github.com/Universe7Nandu/)")
+    st.sidebar.write("[Email](mailto:nandeshkalshetti1@gmail.com)")
+    st.sidebar.write("Developed by Nandesh Kalshetti", unsafe_allow_html=True)
+    # ----------------------------
+
     st.title("🤖 PersonalChatbot-GenAI")
     st.write("An advanced chatbot powered by RAG, prompt engineering, and optimized inference.")
 
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
+    # Form for user input
     with st.form(key="chat_form", clear_on_submit=True):
         user_query = st.text_input("Ask a question:")
         submit_button = st.form_submit_button(label="Send ✈️")
@@ -324,9 +339,16 @@ def streamlit_chat():
         if len(st.session_state.chat_history) > MAX_CHAT_HISTORY:
             st.session_state.chat_history.pop(0)
 
+    # Display chat history
     for chat_item in st.session_state.chat_history:
-        st.markdown(f"<div class='message-bubble user-message'><strong>You:</strong> {chat_item['query']}</div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='message-bubble bot-message'><strong>Bot:</strong> {chat_item['response']}</div>", unsafe_allow_html=True)
+        st.markdown(
+            f"<div class='message-bubble user-message'><strong>You:</strong> {chat_item['query']}</div>",
+            unsafe_allow_html=True
+        )
+        st.markdown(
+            f"<div class='message-bubble bot-message'><strong>Bot:</strong> {chat_item['response']}</div>",
+            unsafe_allow_html=True
+        )
 
 # ------------------------------------------------
 # 5. Main Execution
