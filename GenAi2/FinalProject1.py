@@ -1,3 +1,16 @@
+try:
+    import pysqlite3 as sqlite3
+    import sys
+    sys.modules["sqlite3"] = sqlite3
+except ImportError:
+    pass
+
+# Now the rest of your imports
+import chromadb
+import streamlit as st
+# ... rest of your code
+
+
 import sys
 import warnings
 import os
