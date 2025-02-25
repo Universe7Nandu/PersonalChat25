@@ -1,21 +1,9 @@
-# Web UI framework
 streamlit>=1.25.0
-
-# Persistent vector database
 chromadb>=0.3.27
-
-# Core LangChain functionality (memory, schemas, etc.)
 langchain>=0.0.171
-
-# LangChain integrations for Hugging Face embeddings and Groq chat
 langchain-huggingface>=0.0.8
 langchain-groq>=0.0.3
-
-# For semantic similarity and text encoding
 sentence-transformers>=2.2.2
-
-# Groq API client library (compatible version)
 groq>=0.4.1,<1.0.0
-
-# PyTorch (required for Sentence Transformers)
 torch>=2.0.0
+pysqlite3-binary>=0.4.6
