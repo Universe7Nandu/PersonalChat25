@@ -20,8 +20,7 @@ warnings.filterwarnings("ignore", message=".*ScriptRunContext.*")
 # 1. Initialize ChromaDB, Embeddings, and Chat Model
 # ------------------------------------------------
 # Use a persistent path for ChromaDB; adjust the path as needed
-chroma_client = chromadb.PersistentClient(path="./chroma_db_4")
-
+chroma_client = chromadb.Client()
 # Use get_collection if available, else create the collection
 try:
     collection = chroma_client.get_collection(name="ai_knowledge_base")
