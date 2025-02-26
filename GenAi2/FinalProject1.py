@@ -1,27 +1,9 @@
-
-import sys
-import warnings
-import os
-import asyncio
-import streamlit as st
-
-# Set the page configuration immediately after imports
-st.set_page_config(page_title="AI Chatbot", page_icon="🤖")
-
-# Now you can safely import or execute other Streamlit commands
-from streamlit.runtime.scriptrunner import add_script_run_ctx  
-# ... rest of your imports and code
-
-
-
 import sys
 import warnings
 import os
 import asyncio
 import streamlit as st
 from streamlit.runtime.scriptrunner import add_script_run_ctx  
-import os
-st.write(os.getcwd())
 
 import chromadb
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -322,7 +304,7 @@ def streamlit_chat():
     # ----------------------------
     # SIDEBAR (Navbar) Section
     # ----------------------------
-    st.sidebar.image(os.path.join('assets', 'photo2.jpg'), use_container_width=True)
+    st.sidebar.image('photo2.JPG', use_container_width=True)
     st.sidebar.header("**Nandesh Kalashetti**")
     st.sidebar.write("GenAi Developer And Full-stack Web-Developer")
 
