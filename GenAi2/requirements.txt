@@ -7,3 +7,5 @@ sentence-transformers>=2.2.2
 groq>=0.4.1,<1.0.0
 torch>=2.0.0
 pysqlite3-binary>=0.4.6
+libsqlite3-dev
+sqlite3
