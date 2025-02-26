@@ -12,8 +12,7 @@ from langchain.schema import HumanMessage, SystemMessage
 from langchain.memory import ConversationBufferMemory
 from sentence_transformers import SentenceTransformer, util
 
-# Suppress Streamlit warnings (this works in most cases)
-warnings.filterwarnings("ignore", message=".*ScriptRunContext.*")
+
 
 # ------------------------------------------------
 # 1. Initialize ChromaDB, Embeddings, and Chat Model
