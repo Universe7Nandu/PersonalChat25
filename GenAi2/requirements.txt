@@ -15,3 +15,29 @@ chromadb>=0.4.24
 langchain-huggingface>=0.1.0
 streamlit>=1.25.0
 groq>=0.3.0
+
+# Use pysqlite3 (or pysqlite3-binary if you prefer) to provide an updated sqlite3 interface.
+pysqlite3>=0.4.6
+
+# ChromaDB is used for persistent storage.
+chromadb>=0.3.0
+
+# Streamlit for the web UI.
+streamlit>=1.10.0
+
+# NumPy for numerical operations.
+numpy>=1.21.0
+
+# PyPDF2 for reading PDF files.
+PyPDF2>=2.0.0
+
+# LangChain and its sub-packages for prompt engineering and memory.
+langchain>=0.0.100
+langchain-huggingface>=0.0.1
+langchain-groq>=0.0.1
+
+# Sentence Transformers for semantic embeddings.
+sentence-transformers>=2.2.0
+
+# (Optional) Torch is required by Sentence Transformers.
+torch>=1.7.0
