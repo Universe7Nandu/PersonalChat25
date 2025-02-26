@@ -1,3 +1,19 @@
+
+import sys
+import warnings
+import os
+import asyncio
+import streamlit as st
+
+# Set the page configuration immediately after imports
+st.set_page_config(page_title="AI Chatbot", page_icon="🤖")
+
+# Now you can safely import or execute other Streamlit commands
+from streamlit.runtime.scriptrunner import add_script_run_ctx  
+# ... rest of your imports and code
+
+
+
 import sys
 import warnings
 import os
