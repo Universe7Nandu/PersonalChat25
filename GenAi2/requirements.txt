@@ -1,5 +1,5 @@
 streamlit>=1.25.0
-chromadb>=0.3.27
+chromadb
 langchain>=0.0.171
 langchain-huggingface>=0.0.8
 langchain-groq>=0.0.3
