@@ -1,9 +1,3 @@
-
-
-# Now the rest of your imports
-import chromadb
-import streamlit as st
-
 import sys
 import warnings
 import os
@@ -11,6 +5,7 @@ import asyncio
 import streamlit as st
 from streamlit.runtime.scriptrunner import add_script_run_ctx  
 
+import chromadb
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_groq import ChatGroq
@@ -25,7 +20,8 @@ warnings.filterwarnings("ignore", message=".*ScriptRunContext.*")
 # 1. Initialize ChromaDB, Embeddings, and Chat Model
 # ------------------------------------------------
 # Use a persistent path for ChromaDB; adjust the path as needed
-chroma_client = chromadb.Client()
+chroma_client = chromadb.PersistentClient(path="./chroma_db_4")
+
 # Use get_collection if available, else create the collection
 try:
     collection = chroma_client.get_collection(name="ai_knowledge_base")
@@ -181,7 +177,7 @@ def add_custom_css():
 body {
   margin: 0;
   padding: 0;
-  background: linear-gradient(135deg,rgb(227, 230, 235) 0%, #243B55 100%);
+  background: #fff;
   font-family: 'Inter', sans-serif;
 }
 
