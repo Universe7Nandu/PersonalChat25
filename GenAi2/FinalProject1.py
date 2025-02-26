@@ -1,3 +1,4 @@
+import asyncio
 
 __import__('pysqlite3')
 import sys
