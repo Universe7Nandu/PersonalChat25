@@ -7,3 +7,11 @@ sentence-transformers>=2.2.2
 groq>=0.4.1,<1.0.0
 torch>=2.0.0
 
+numpy>=1.21.0
+PyPDF2>=3.0.0
+pysqlite3-binary
+langchain>=0.1.0
+chromadb>=0.4.24
+langchain-huggingface>=0.1.0
+streamlit>=1.25.0
+groq>=0.3.0
