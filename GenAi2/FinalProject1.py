@@ -302,7 +302,7 @@ def streamlit_chat():
     # ----------------------------
     # SIDEBAR (Navbar) Section
     # ----------------------------
-    st.sidebar.image('photo2.jpg', use_container_width=True)
+    #st.sidebar.image('photo2.jpg', use_container_width=True)
     st.sidebar.header("**Nandesh Kalashetti**")
     st.sidebar.write("GenAi Developer And Full-stack Web-Developer")
 
