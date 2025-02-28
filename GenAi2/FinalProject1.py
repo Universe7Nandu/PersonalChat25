@@ -1,53 +1,53 @@
-import asyncio
 import sys
+import warnings
 import os
-import chromadb
+import asyncio
 import streamlit as st
-import numpy as np
-import PyPDF2
+from streamlit.runtime.scriptrunner import add_script_run_ctx
+
+import chromadb
+from chromadb.config import Settings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_groq import ChatGroq
 from langchain.schema import HumanMessage, SystemMessage
 from langchain.memory import ConversationBufferMemory
 from sentence_transformers import SentenceTransformer, util
+import PyPDF2
 
-# ------------------------------------------------
-# Use pysqlite3 as sqlite3
-# ------------------------------------------------
-__import__('pysqlite3')
-sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
+# -----------------------
+# Suppress certain warnings
+# -----------------------
+warnings.filterwarnings("ignore", message=".*ScriptRunContext.*")
 
-# ------------------------------------------------
+# -----------------------
 # 1. Initialize ChromaDB, Embeddings, and Chat Model
-# ------------------------------------------------
-chroma_client = chromadb.PersistentClient(path="./chroma_db_4")
-
+# -----------------------
+chroma_client = chromadb.PersistentClient(path="./chroma_db_5")  # new DB path
 try:
-    collection = chroma_client.get_collection(name="ai_knowledge_base")
+    collection = chroma_client.get_collection(name="my_new_knowledge_base")
 except chromadb.errors.InvalidCollectionException:
-    collection = chroma_client.create_collection(name="ai_knowledge_base")
+    collection = chroma_client.create_collection(name="my_new_knowledge_base")
 
 embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
 
-# Set your Groq API key and initialize the chat model
+# Replace with your actual Groq API key
 GROQ_API_KEY = "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"
 chat = ChatGroq(temperature=0.7, model_name="llama3-70b-8192", groq_api_key=GROQ_API_KEY)
 
-# Initialize conversation memory
+# -----------------------
+# 2. Conversation Memory
+# -----------------------
 memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
-# ------------------------------------------------
-# 2. Helper Functions
-# ------------------------------------------------
+# -----------------------
+# 3. Helper Functions
+# -----------------------
 def get_recent_chat_history(n=8):
+    """Return the last n conversation turns from memory."""
     past_chat_history = memory.load_memory_variables({}).get("chat_history", [])
     return past_chat_history[-n:] if past_chat_history else ["No past conversation history."]
-
-def get_memory_usage():
-    chat_history = memory.load_memory_variables({}).get("chat_history", [])
-    return len(chat_history)
 
 def retrieve_context(query, top_k=3):
     """Retrieve relevant documents from ChromaDB using embeddings."""
@@ -72,17 +72,13 @@ def evaluate_response(user_query, generated_response, context):
     return similarity_score
 
 def send_evaluation_to_arize(user_query, generated_response, evaluation_score):
-    # Placeholder for Arize integration; here we just print the score.
-    print(f"Arize Log | Query: {user_query} | Score: {evaluation_score:.2f}")
+    """Log evaluation metrics (placeholder)."""
+    print(f"[DEBUG] Arize Log | Query: {user_query} | Score: {evaluation_score:.2f}")
 
 def chunk_document(document_text, chunk_size=200, chunk_overlap=50, batch_size=10):
-    """
-    Split a document into chunks and upsert them into ChromaDB.
-    Useful for ingesting large documents (e.g., PDF resumes).
-    """
-    splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-    chunks = splitter.split_text(document_text)
-    
+    """Split a document into chunks and upsert them into ChromaDB."""
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+    chunks = text_splitter.split_text(document_text)
     for i in range(0, len(chunks), batch_size):
         batch = chunks[i:i + batch_size]
         embeddings = [embedding_model.embed_query(chunk) for chunk in batch]
@@ -92,59 +88,36 @@ def chunk_document(document_text, chunk_size=200, chunk_overlap=50, batch_size=1
             ids=[f"doc_chunk_{i+j}" for j in range(len(batch))],
             metadatas=[{"chunk_index": i+j} for j in range(len(batch))]
         )
-    
     return f"Upserted {len(chunks)} chunks to the database."
 
-# You can alias the above function if you prefer:
-chunk_and_upsert = chunk_document
-
-# ------------------------------------------------
-# 3. Asynchronous Core Chat Function
-# ------------------------------------------------
 async def query_llama3_async(user_query):
+    """Core function to get a response from the Groq LLaMA model with debug prints."""
     system_prompt = """
-## *Goal*  
-I want a chatbot that references a PDF about Nandesh Kalashetti’s background, skills, projects, and certifications. It should provide *short answers* (with emojis) for simple questions, and *detailed explanations* (referencing PDF insights) for more complex questions. The chatbot must maintain a warm, human tone and never reveal any non-human origins.
+## **Goal**  
+I want a chatbot that references a PDF about Nandesh Kalashetti’s background, skills, projects, and certifications. It should provide **short answers** (with emojis) for simple questions, and **detailed explanations** (referencing PDF insights) for more complex questions. The chatbot must maintain a warm, human tone and never reveal any non-human origins.
 
-## *Return Format*  
-1. *Concise Responses (Simple Queries):*  
+## **Return Format**  
+1. **Concise Responses (Simple Queries):**  
    - Under six words.  
-   - Use relevant emojis (e.g., 😊, 🚀, 👍) to convey friendliness and clarity.  
+   - Use relevant emojis (e.g., 😊, 🚀, 👍).
 
-2. *Detailed Explanations (In-Depth Queries):*  
+2. **Detailed Explanations (In-Depth Queries):**  
    - Integrate key insights from the PDF about Nandesh Kalashetti’s educational background, technical skills, and certifications.  
-   - Provide a warm, empathetic, and structured explanation.  
-   - Always maintain precision and clarity, referencing relevant data from the PDF.  
-
-3. *Tone & Style:*  
+   - Provide a warm, empathetic, and structured explanation.
+   
+3. **Tone & Style:**  
    - Human-like, empathetic, and helpful.  
-   - Avoid revealing any AI or non-human nature.  
-   - Adapt answer length based on the query’s complexity.
+   - Avoid revealing any AI or non-human nature.
 
-## *Warnings*  
-- Never disclose any AI-related details or mention you’re a system.  
-- Remain consistent with Nandesh Kalashetti’s persona—an expert full-stack web developer with advanced problem-solving skills.  
-- Ensure all references to the PDF are correct and accurately represent Nandesh’s background.
-
-## *Context Dump*  
-- *Primary Source (Uploaded PDF):* Contains comprehensive details on Nandesh Kalashetti’s education, technical skills, projects, certifications, and overall professional expertise.  
-- *Key Capabilities:*  
-  - Dynamically adapt response length (short vs. long) based on the user’s query.  
-  - Insert emojis to add warmth and clarity.  
-  - Provide real-world applicability in every solution.  
-- *Behavioral Directives:*  
-  - Present yourself as a knowledgeable human expert.  
-  - Never break the “no AI disclosure” rule.  
-  - Prioritize user understanding and real-world context.  
-
+## **Context Dump**  
+- **Primary Source:** Contains details on Nandesh Kalashetti’s education, skills, projects, and certifications.
+- **Behavioral Directives:**  
+   - Present yourself as a knowledgeable human expert.
+   - Never break the “no AI disclosure” rule.
 ---
-
-*Usage Example:*  
-1. *Short Query:* “What are Nandesh’s top skills?”  
-   - *Short Answer* (≤6 words, with emojis)  
-2. *Complex Query:* “Tell me more about his advanced projects and how they integrate with cloud platforms.”  
-   - *Detailed Explanation* referencing PDF data (projects, certifications, advanced solutions), with structured insights and an empathetic tone.
 """
+    print("[DEBUG] query_llama3_async invoked with user_query:", user_query)
+
     past_chat_history = get_recent_chat_history()
     retrieved_context = retrieve_context(user_query)
     combined_context = f"🗂 Past Chat: {past_chat_history}\n📖 DB Context: {retrieved_context}"
@@ -153,21 +126,28 @@ I want a chatbot that references a PDF about Nandesh Kalashetti’s background, 
         HumanMessage(content=f"{combined_context}\n\n📝 Question: {user_query}")
     ]
     try:
+        print("[DEBUG] Sending request to Groq LLaMA...")
         response = await asyncio.to_thread(chat.invoke, messages)
+        print("[DEBUG] Groq response object:", response)
         if response:
             memory.save_context({"input": user_query}, {"output": response.content})
             evaluation_score = evaluate_response(user_query, response.content, retrieved_context)
             send_evaluation_to_arize(user_query, response.content, evaluation_score)
-            print(f"💾 Memory Usage: {get_memory_usage()} past interactions")
-            print(f"Evaluation Score (Semantic Similarity): {evaluation_score:.2f}")
-            return response.content
-        return "⚠ No response received."
+            print("[DEBUG] Response content:", response.content)
+            if response.content.strip():
+                return response.content
+            else:
+                return "⚠️ No content in the response."
+        else:
+            print("[DEBUG] No response object received.")
+            return "⚠️ No response received from the model."
     except Exception as e:
-        return f"⚠ API Error: {str(e)}"
+        print("[DEBUG] Exception in query_llama3_async:", e)
+        return f"⚠️ API Error: {str(e)}"
 
-# ------------------------------------------------
-# 4. PDF Extraction and Chunking Functions
-# ------------------------------------------------
+# -----------------------
+# 4. PDF Extraction and Ingestion
+# -----------------------
 def extract_text_from_pdf(pdf_path):
     """Extract text from a PDF file using PyPDF2."""
     text = ""
@@ -179,202 +159,260 @@ def extract_text_from_pdf(pdf_path):
                 text += page_text + "\n"
     return text
 
-# ------------------------------------------------
-# 5. Streamlit Web UI (with Sidebar)
-# ------------------------------------------------
+def ingest_pdf_into_chromadb(pdf_path):
+    """Extract text, chunk it, and store embeddings in ChromaDB."""
+    if not os.path.exists(pdf_path):
+        print(f"⚠️ PDF file not found at: {pdf_path}")
+        return
+    text = extract_text_from_pdf(pdf_path)
+    if text.strip():
+        result = chunk_document(text, chunk_size=200, chunk_overlap=50)
+        print(result)
+    else:
+        print("⚠️ No text found in the PDF!")
+
+# -----------------------
+# 5. Streamlit UI
+# -----------------------
 def add_custom_css():
+    """Inject custom CSS for a compact, dark-themed ChatGPT-style UI."""
     st.markdown(
         """
-   <style>
-/* Import a professional font */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-
-body {
-  margin: 0;
-  padding: 0;
-  background: #fff;
-  font-family: 'Inter', sans-serif;
-}
-
-/* Central chat container */
-.chat-container {
-  width: 100%;
-  max-width: 800px;
-  margin: 3rem auto;
-  background: #fff; /* A crisp, clean container background */
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-  overflow: hidden;
-  position: relative;
-}
-
-/* Optional header for your chatbot */
-.chat-header {
-  text-align: center;
-  background: #f5f6fa;
-  padding: 1.5rem 1rem;
-  border-bottom: 1px solid #eaeaea;
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #333;
-}
-
-/* Main area for messages */
-.chat-messages {
-  padding: 1.5rem;
-  background: #fafbfc;
-  min-height: 300px; /* Ensures some height even with few messages */
-}
-
-/* Shared bubble styles */
-.message-bubble {
-  padding: 1rem 1.5rem;
-  margin: 1rem 0;
-  max-width: 70%;
-  border-radius: 16px;
-  box-shadow: 0 5px 15px rgba(223, 33, 33, 0.1);
-  animation: fadeIn 0.4s ease forwards;
-  transition: transform 0.2s ease-in-out;
-}
-
-/* Hover effect to add a little interactivity */
-.message-bubble:hover {
-  transform: scale(1.02);
-}
-
-/* Distinguish user messages with a sleek gradient */
-.user-message {
-  align-self: flex-end;
-  background: linear-gradient(135deg, #3A7BD5, #00D2FF);
-  color: black;
-  text-align: right;
-}
-
-/* Bot messages in a softer, neutral tone */
-.bot-message {
-  align-self: flex-start;
-  background: #ECEFF1;
-  color: black;
-  border: 1px solid #dde1e4;
-}
-
-/* Fade-in animation for message bubbles */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* Sticky or pinned area at the bottom for input (if used that way) */
-.chat-input-area {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem;
-  background: #f5f6fa;
-  border-top: 1px solid #eaeaea;
-}
-
-/* Text input with a more professional look */
-.chat-input {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  border: 2px solid #e0e0e0;
-  border-radius: 30px;
-  font-size: 1rem;
-  background: #fff;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.chat-input:focus {
-  outline: none;
-  border-color: #3A7BD5;
-  box-shadow: 0 0 0 3px rgba(58,123,213,0.2);
-}
-
-/* Send button with a refined gradient and subtle hover effect */
-.send-button {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 30px;
-  background: linear-gradient(135deg, #3A7BD5, #00D2FF);
-  color: #fff;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.send-button:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-</style>
+        <style>
+        /* Import font */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        
+        /* Overall page styling */
+        body {
+            margin: 0;
+            padding: 0;
+            background: #121212;
+            color: #e0e0e0;
+            font-family: 'Inter', sans-serif;
+        }
+        header[data-testid="stHeader"], footer {
+            display: none !important;
+        }
+        /* Sidebar styling */
+        .css-1cpxqw2 {
+            width: 260px !important;
+            background: #1e1e2f !important;
+        }
+        .css-1cpxqw2 > div {
+            color: #fff !important;
+        }
+        /* Main container for chat 
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            width: calc(100% - 260px);
+            margin-left: 260px; /* offset for sidebar */
+            margin-top: 0.5rem;
+            background: #1e1e2f;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            min-height: calc(100vh - 1rem);
+            overflow: hidden;
+        }*/
+        .chat-header {
+            padding: 1rem 1.5rem 0.5rem 1.5rem;
+        }
+        .chat-subheader {
+            padding: 0 1.5rem 1rem 1.5rem;
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+        .chat-messages {
+            flex: 1;
+            padding: 1rem 1.5rem;
+            overflow-y: auto;
+        }
+        /* Custom scrollbar */
+        .chat-messages::-webkit-scrollbar {
+            width: 8px;
+        }
+        .chat-messages::-webkit-scrollbar-track {
+            background: #1e1e2f;
+        }
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+        .message-bubble {
+            padding: 1rem 1.2rem;
+            margin: 0.75rem 0;
+            max-width: 80%;
+            border-radius: 16px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            animation: fadeIn 0.4s ease forwards;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+        .message-bubble:hover {
+            transform: scale(1.01);
+        }
+        .user-message {
+            background: linear-gradient(135deg, #3a7bd5, #00d2ff);
+            color: #000;
+            margin-left: auto;
+            align-self: flex-end;
+        }
+        .bot-message {
+            background: #2c2c3e;
+            color: #fff;
+            margin-right: auto;
+            align-self: flex-start;
+        }
+        .message-bubble strong {
+            display: block;
+            margin-bottom: 0.3rem;
+            font-weight: 600;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Input area inside container */
+        .chat-input-area {
+            width: 100%;
+            padding: 1rem;
+            background: #1e1e2f;
+            border-top: 1px solid #444;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .chat-input {
+            flex: 1;
+            padding: 0.8rem 1rem;
+            border-radius: 8px;
+            border: none;
+            background: #2c2c3e;
+            color: #e0e0e0;
+            font-size: 1rem;
+        }
+        .chat-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #00d2ff;
+        }
+        .send-button {
+            padding: 0.8rem 1.5rem;
+            background: #00d2ff;
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .send-button:hover {
+            background: #3a7bd5;
+            color: #fff;
+        }
+        </style>
         """,
         unsafe_allow_html=True
     )
 
-def streamlit_chat():
-    st.set_page_config(page_title="AI Chatbot", page_icon="🤖")
-    add_custom_css()
-    
-    # ----------------------------
-    # SIDEBAR (Navbar) Section
-    # ----------------------------
-    st.sidebar.header("*Nandesh Kalashetti*")
-    st.sidebar.write("GenAi Developer And Full-stack Web-Developer")
-    st.sidebar.header("Contact Information")
-    st.sidebar.write("Feel free to reach out through the following")
-    st.sidebar.write("[LinkedIn](https://www.linkedin.com/in/nandesh-kalashetti-333a78250/)")
-    st.sidebar.write("[GitHub](https://github.com/Universe7Nandu/)")
-    st.sidebar.write("[Email](mailto:nandeshkalshetti1@gmail.com)")
-    st.sidebar.write("Developed by Nandesh Kalashetti", unsafe_allow_html=True)
-    
-    st.title("🤖 PersonalChatbot-GenAI")
-    st.write("An advanced chatbot powered by RAG, prompt engineering, and optimized inference.")
-
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
-
-    # Form for user input
-    with st.form(key="chat_form", clear_on_submit=True):
-        user_query = st.text_input("Ask a question:")
-        submit_button = st.form_submit_button(label="Send ✈")
-
-    if submit_button and user_query:
+def send_message():
+    """Callback to send the user query and update chat history."""
+    user_query = st.session_state.get("user_query_input", "")
+    if user_query.strip():
+        print("[DEBUG] user_query from input:", user_query)
         with st.spinner("Generating response..."):
             response = asyncio.run(query_llama3_async(user_query))
+        print("[DEBUG] Model responded with:", response)
         st.session_state.chat_history.append({"query": user_query, "response": response})
+        # Clear the input field
+        st.session_state.user_query_input = ""
 
-        # Limit chat history for performance
-        MAX_CHAT_HISTORY = 100
-        if len(st.session_state.chat_history) > MAX_CHAT_HISTORY:
-            st.session_state.chat_history.pop(0)
+def chatgpt_like_ui():
+    """
+    Renders the main Streamlit UI in a single container with minimal top margin.
+    Supports sending a message on Enter or clicking the Send button.
+    """
+    st.set_page_config(page_title="PersonalChatbot-GenAI", page_icon="🤖", layout="wide")
+    add_custom_css()
 
-    # Display chat history
+    # Initialize session state keys if they don't exist.
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+    if "user_query_input" not in st.session_state:
+        st.session_state.user_query_input = ""
+
+    # SIDEBAR
+    with st.sidebar:
+        st.title("New Chat")
+        if st.button("Start New Chat"):
+            st.session_state.chat_history = []
+            memory.clear()
+        st.subheader("Previous Chats")
+        if st.session_state.chat_history:
+            for i, ch in enumerate(st.session_state.chat_history):
+                st.write(f"**{i+1}.** {ch['query']}")
+        st.markdown("---")
+        st.image('photo2.JPG', use_container_width=True)
+        st.write("**Nandesh Kalashetti**")
+        st.write("GenAi Developer And Full-stack Web-Developer")
+        st.markdown("[LinkedIn](https://www.linkedin.com/in/nandesh-kalashetti-333a78250/)")
+        st.markdown("[GitHub](https://github.com/Universe7Nandu/)")
+        st.markdown("[Email](mailto:nandeshkalshetti1@gmail.com)")
+        st.write("Developed by Nandesh Kalashetti")
+
+    # MAIN CONTAINER
+    st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class='chat-header'><h2>🤖 PersonalChatbot-GenAI</h2></div>
+        <div class='chat-subheader'>Ask me about Nandesh's background, skills, projects, and more!</div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # Chat messages
+    st.markdown("<div class='chat-messages'>", unsafe_allow_html=True)
     for chat_item in st.session_state.chat_history:
         st.markdown(
-            f"<div class='message-bubble user-message'><strong>You:</strong> {chat_item['query']}</div>",
+            f"""
+            <div class='message-bubble user-message'>
+                <strong>You:</strong> {chat_item['query']}
+            </div>
+            """,
             unsafe_allow_html=True
         )
         st.markdown(
-            f"<div class='message-bubble bot-message'><strong>Bot:</strong> {chat_item['response']}</div>",
+            f"""
+            <div class='message-bubble bot-message'>
+                <strong>Bot:</strong> {chat_item['response']}
+            </div>
+            """,
             unsafe_allow_html=True
         )
+    st.markdown("</div>", unsafe_allow_html=True)  # End chat-messages
 
-# ------------------------------------------------
-# 6. Main Execution
-# ------------------------------------------------
-if __name__ == "__main__":
-    # Ingest the PDF once (comment out if you don't want to re-upsert each run)
+    # Input area
+    st.markdown("<div class='chat-input-area'>", unsafe_allow_html=True)
+    # Text input with on_change callback: pressing Enter will trigger send_message()
+    st.text_input(
+        "",
+        key="user_query_input",
+        placeholder="Ask me anything...",
+        label_visibility="collapsed",
+        on_change=send_message
+    )
+    # Also provide a Send button that calls send_message()
+    if st.button("Send"):
+        send_message()
+    st.markdown("</div>", unsafe_allow_html=True)  # End chat-input-area
+
+    st.markdown("</div>", unsafe_allow_html=True)  # End chat-container
+
+def main():
+    # Ingest PDF (comment out if you don't want to re-ingest each run)
     pdf_path = "./resume.pdf"
-    if os.path.exists(pdf_path):
-        text = extract_text_from_pdf(pdf_path)
-        if text.strip():
-            result_msg = chunk_and_upsert(text, chunk_size=200, chunk_overlap=50)
-            print(result_msg)
-        else:
-            print("⚠ No text found in the PDF!")
-    else:
-        print(f"⚠ PDF file not found at: {pdf_path}")
+    ingest_pdf_into_chromadb(pdf_path)
 
-    # Launch the Streamlit chat UI
-    streamlit_chat()
+    chatgpt_like_ui()
+
+if __name__ == "__main__":
+    main()
