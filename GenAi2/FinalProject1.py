@@ -314,33 +314,16 @@ def add_custom_css():
         unsafe_allow_html=True
     )
 
-def send_message():
-    """Callback to send the user query and update chat history."""
-    user_query = st.session_state.get("user_query_input", "")
-    if user_query.strip():
-        print("[DEBUG] user_query from input:", user_query)
-        with st.spinner("Generating response..."):
-            response = asyncio.run(query_llama3_async(user_query))
-        print("[DEBUG] Model responded with:", response)
-        st.session_state.chat_history.append({"query": user_query, "response": response})
-        # Clear the input field
-        st.session_state.user_query_input = ""
-
 def chatgpt_like_ui():
-    """
-    Renders the main Streamlit UI in a single container with minimal top margin.
-    Supports sending a message on Enter or clicking the Send button.
-    """
     st.set_page_config(page_title="PersonalChatbot-GenAI", page_icon="🤖", layout="wide")
     add_custom_css()
 
-    # Initialize session state keys if they don't exist.
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
     if "user_query_input" not in st.session_state:
         st.session_state.user_query_input = ""
 
-    # SIDEBAR
+    # SIDEBAR (unchanged)
     with st.sidebar:
         st.title("New Chat")
         if st.button("Start New Chat"):
@@ -351,7 +334,7 @@ def chatgpt_like_ui():
             for i, ch in enumerate(st.session_state.chat_history):
                 st.write(f"**{i+1}.** {ch['query']}")
         st.markdown("---")
-        #st.image(os.path.join(os.getcwd(), 'photo2.jpg'), use_container_width=True)
+        st.image('photo2.jpg', use_container_width=True)
         st.write("**Nandesh Kalashetti**")
         st.write("GenAi Developer And Full-stack Web-Developer")
         st.markdown("[LinkedIn](https://www.linkedin.com/in/nandesh-kalashetti-333a78250/)")
@@ -369,7 +352,7 @@ def chatgpt_like_ui():
         unsafe_allow_html=True
     )
 
-    # Chat messages
+    # Display chat messages
     st.markdown("<div class='chat-messages'>", unsafe_allow_html=True)
     for chat_item in st.session_state.chat_history:
         st.markdown(
@@ -388,19 +371,25 @@ def chatgpt_like_ui():
             """,
             unsafe_allow_html=True
         )
-    st.markdown("</div>", unsafe_allow_html=True)  # End chat-messages
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    # Input area
-    st.markdown("<div class='chat-input-area'>", unsafe_allow_html=True)
-    # Text input with on_change callback: pressing Enter will trigger send_message()
-    st.text_input(
-        "",
-        key="user_query_input",
-        placeholder="Ask me anything...",
-        label_visibility="collapsed",
-        on_change=send_message
-    )
-    # Also provide a Send button that calls send_message()
+    # Input area using a form (this replaces the on_change approach)
+    with st.form(key="chat_form", clear_on_submit=True):
+        user_query = st.text_input("", key="user_query_input", placeholder="Ask me anything...")
+        submit_button = st.form_submit_button(label="Send")
+        if submit_button and user_query.strip():
+            send_message(user_query)
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+def send_message(user_query):
+    print("[DEBUG] user_query from input:", user_query)
+    with st.spinner("Generating response..."):
+        response = asyncio.run(query_llama3_async(user_query))
+    print("[DEBUG] Model responded with:", response)
+    st.session_state.chat_history.append({"query": user_query, "response": response})
+ Also provide a Send button that calls send_message()
     if st.button("Send"):
         send_message()
     st.markdown("</div>", unsafe_allow_html=True)  # End chat-input-area
