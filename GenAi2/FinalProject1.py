@@ -351,7 +351,7 @@ def chatgpt_like_ui():
             for i, ch in enumerate(st.session_state.chat_history):
                 st.write(f"**{i+1}.** {ch['query']}")
         st.markdown("---")
-        st.image('photo2.JPG', use_container_width=True)
+        st.image(os.path.join(os.getcwd(), 'photo2.jpg'), use_container_width=True)
         st.write("**Nandesh Kalashetti**")
         st.write("GenAi Developer And Full-stack Web-Developer")
         st.markdown("[LinkedIn](https://www.linkedin.com/in/nandesh-kalashetti-333a78250/)")
