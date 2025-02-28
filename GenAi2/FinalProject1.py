@@ -13,7 +13,7 @@ from langchain_groq import ChatGroq
 from langchain.schema import HumanMessage, SystemMessage
 from langchain.memory import ConversationBufferMemory
 from sentence_transformers import SentenceTransformer, util
-import PyPDF2
+import pdfplumber  # New library for robust PDF extraction
 
 # -----------------------
 # Suppress certain warnings
@@ -23,7 +23,7 @@ warnings.filterwarnings("ignore", message=".*ScriptRunContext.*")
 # -----------------------
 # 1. Initialize ChromaDB, Embeddings, and Chat Model
 # -----------------------
-chroma_client = chromadb.PersistentClient(path="./chroma_db_4")  # new DB path
+chroma_client = chromadb.PersistentClient(path="./chroma_db_5")  # new DB path
 try:
     collection = chroma_client.get_collection(name="my_new_knowledge_base")
 except chromadb.errors.InvalidCollectionException:
@@ -98,7 +98,7 @@ I want a chatbot that references a PDF about Nandesh Kalashetti’s background, 
 
 ## **Return Format**  
 1. **Concise Responses (Simple Queries):**  
-   - Under eight words.  
+   - Under six words.  
    - Use relevant emojis (e.g., 😊, 🚀, 👍).
 
 2. **Detailed Explanations (In-Depth Queries):**  
@@ -149,14 +149,16 @@ I want a chatbot that references a PDF about Nandesh Kalashetti’s background, 
 # 4. PDF Extraction and Ingestion
 # -----------------------
 def extract_text_from_pdf(pdf_path):
-    """Extract text from a PDF file using PyPDF2."""
+    """Extract text from a PDF file using pdfplumber."""
     text = ""
-    with open(pdf_path, 'rb') as file:
-        reader = PyPDF2.PdfReader(file)
-        for page in reader.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text += page_text + "\n"
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+    except Exception as e:
+        print("Error extracting text from PDF:", e)
     return text
 
 def ingest_pdf_into_chromadb(pdf_path):
@@ -166,6 +168,7 @@ def ingest_pdf_into_chromadb(pdf_path):
         return
     text = extract_text_from_pdf(pdf_path)
     if text.strip():
+        print(f"[DEBUG] Extracted {len(text)} characters from PDF.")
         result = chunk_document(text, chunk_size=200, chunk_overlap=50)
         print(result)
     else:
@@ -201,20 +204,7 @@ def add_custom_css():
         .css-1cpxqw2 > div {
             color: #fff !important;
         }
-        /* Main container for chat 
-        .chat-container {
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            width: calc(100% - 260px);
-            margin-left: 260px; /* offset for sidebar */
-            margin-top: 0.5rem;
-            background: #1e1e2f;
-            border-radius: 12px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
-            min-height: calc(100vh - 1rem);
-            overflow: hidden;
-        }*/
+        /* Main container for chat */
         .chat-header {
             padding: 1rem 1.5rem 0.5rem 1.5rem;
         }
@@ -287,7 +277,7 @@ def add_custom_css():
             padding: 0.8rem 1rem;
             border-radius: 8px;
             border: none;
-            background: #2c2c3e;
+            background: #2c2e3e;
             color: #e0e0e0;
             font-size: 1rem;
         }
@@ -323,7 +313,7 @@ def chatgpt_like_ui():
     if "user_query_input" not in st.session_state:
         st.session_state.user_query_input = ""
 
-    # SIDEBAR (unchanged)
+    # SIDEBAR
     with st.sidebar:
         st.title("New Chat")
         if st.button("Start New Chat"):
@@ -334,7 +324,11 @@ def chatgpt_like_ui():
             for i, ch in enumerate(st.session_state.chat_history):
                 st.write(f"**{i+1}.** {ch['query']}")
         st.markdown("---")
-        #st.image('photo2.jpg', use_container_width=True)
+        img_path = "photo2.jpg"
+        if os.path.exists(img_path):
+            st.image(img_path, use_container_width=True)
+        else:
+            st.error(f"Image file not found: {img_path}")
         st.write("**Nandesh Kalashetti**")
         st.write("GenAi Developer And Full-stack Web-Developer")
         st.markdown("[LinkedIn](https://www.linkedin.com/in/nandesh-kalashetti-333a78250/)")
@@ -373,7 +367,7 @@ def chatgpt_like_ui():
         )
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Input area using a form (this replaces the on_change approach)
+    # Input area using a form
     with st.form(key="chat_form", clear_on_submit=True):
         user_query = st.text_input("", key="user_query_input", placeholder="Ask me anything...")
         submit_button = st.form_submit_button(label="Send")
@@ -393,7 +387,6 @@ def main():
     # Ingest PDF (comment out if you don't want to re-ingest each run)
     pdf_path = "./resume.pdf"
     ingest_pdf_into_chromadb(pdf_path)
-
     chatgpt_like_ui()
 
 if __name__ == "__main__":
