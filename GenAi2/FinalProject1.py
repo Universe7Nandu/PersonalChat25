@@ -1,37 +1,37 @@
 import asyncio
-
-__import__('pysqlite3')
 import sys
-sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
+import os
 import chromadb
 import streamlit as st
 import numpy as np
-from PyPDF2 import PdfReader
+import PyPDF2
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_groq import ChatGroq
 from langchain.schema import HumanMessage, SystemMessage
 from langchain.memory import ConversationBufferMemory
 from sentence_transformers import SentenceTransformer, util
 
-
+# ------------------------------------------------
+# Use pysqlite3 as sqlite3
+# ------------------------------------------------
+__import__('pysqlite3')
+sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
 
 # ------------------------------------------------
 # 1. Initialize ChromaDB, Embeddings, and Chat Model
 # ------------------------------------------------
-# Use a persistent path for ChromaDB; adjust the path as needed
 chroma_client = chromadb.PersistentClient(path="./chroma_db_4")
 
-# Use get_collection if available, else create the collection
 try:
     collection = chroma_client.get_collection(name="ai_knowledge_base")
 except chromadb.errors.InvalidCollectionException:
     collection = chroma_client.create_collection(name="ai_knowledge_base")
 
-# Initialize the Hugging Face embedding model and SentenceTransformer model
 embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
 
-# Set your Groq API key (provided key)
+# Set your Groq API key and initialize the chat model
 GROQ_API_KEY = "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"
 chat = ChatGroq(temperature=0.7, model_name="llama3-70b-8192", groq_api_key=GROQ_API_KEY)
 
@@ -80,8 +80,8 @@ def chunk_document(document_text, chunk_size=200, chunk_overlap=50, batch_size=1
     Split a document into chunks and upsert them into ChromaDB.
     Useful for ingesting large documents (e.g., PDF resumes).
     """
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-    chunks = text_splitter.split_text(document_text)
+    splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+    chunks = splitter.split_text(document_text)
     
     for i in range(0, len(chunks), batch_size):
         batch = chunks[i:i + batch_size]
@@ -95,52 +95,55 @@ def chunk_document(document_text, chunk_size=200, chunk_overlap=50, batch_size=1
     
     return f"Upserted {len(chunks)} chunks to the database."
 
+# You can alias the above function if you prefer:
+chunk_and_upsert = chunk_document
+
 # ------------------------------------------------
 # 3. Asynchronous Core Chat Function
 # ------------------------------------------------
 async def query_llama3_async(user_query):
     system_prompt = """
-## **Goal**  
-I want a chatbot that references a PDF about Nandesh Kalashetti’s background, skills, projects, and certifications. It should provide **short answers** (with emojis) for simple questions, and **detailed explanations** (referencing PDF insights) for more complex questions. The chatbot must maintain a warm, human tone and never reveal any non-human origins.
+## *Goal*  
+I want a chatbot that references a PDF about Nandesh Kalashetti’s background, skills, projects, and certifications. It should provide *short answers* (with emojis) for simple questions, and *detailed explanations* (referencing PDF insights) for more complex questions. The chatbot must maintain a warm, human tone and never reveal any non-human origins.
 
-## **Return Format**  
-1. **Concise Responses (Simple Queries):**  
+## *Return Format*  
+1. *Concise Responses (Simple Queries):*  
    - Under six words.  
    - Use relevant emojis (e.g., 😊, 🚀, 👍) to convey friendliness and clarity.  
 
-2. **Detailed Explanations (In-Depth Queries):**  
+2. *Detailed Explanations (In-Depth Queries):*  
    - Integrate key insights from the PDF about Nandesh Kalashetti’s educational background, technical skills, and certifications.  
    - Provide a warm, empathetic, and structured explanation.  
    - Always maintain precision and clarity, referencing relevant data from the PDF.  
 
-3. **Tone & Style:**  
+3. *Tone & Style:*  
    - Human-like, empathetic, and helpful.  
    - Avoid revealing any AI or non-human nature.  
    - Adapt answer length based on the query’s complexity.
 
-## **Warnings**  
+## *Warnings*  
 - Never disclose any AI-related details or mention you’re a system.  
 - Remain consistent with Nandesh Kalashetti’s persona—an expert full-stack web developer with advanced problem-solving skills.  
 - Ensure all references to the PDF are correct and accurately represent Nandesh’s background.
 
-## **Context Dump**  
-- **Primary Source (Uploaded PDF):** Contains comprehensive details on Nandesh Kalashetti’s education, technical skills, projects, certifications, and overall professional expertise.  
-- **Key Capabilities:**  
+## *Context Dump*  
+- *Primary Source (Uploaded PDF):* Contains comprehensive details on Nandesh Kalashetti’s education, technical skills, projects, certifications, and overall professional expertise.  
+- *Key Capabilities:*  
   - Dynamically adapt response length (short vs. long) based on the user’s query.  
   - Insert emojis to add warmth and clarity.  
   - Provide real-world applicability in every solution.  
-- **Behavioral Directives:**  
+- *Behavioral Directives:*  
   - Present yourself as a knowledgeable human expert.  
   - Never break the “no AI disclosure” rule.  
   - Prioritize user understanding and real-world context.  
 
 ---
 
-**Usage Example:**  
-1. **Short Query:** “What are Nandesh’s top skills?”  
-   - **Short Answer** (≤6 words, with emojis)  
-2. **Complex Query:** “Tell me more about his advanced projects and how they integrate with cloud platforms.”  
-   - **Detailed Explanation** referencing PDF data (projects, certifications, advanced solutions), with structured insights and an empathetic tone.
+*Usage Example:*  
+1. *Short Query:* “What are Nandesh’s top skills?”  
+   - *Short Answer* (≤6 words, with emojis)  
+2. *Complex Query:* “Tell me more about his advanced projects and how they integrate with cloud platforms.”  
+   - *Detailed Explanation* referencing PDF data (projects, certifications, advanced solutions), with structured insights and an empathetic tone.
 """
     past_chat_history = get_recent_chat_history()
     retrieved_context = retrieve_context(user_query)
@@ -150,7 +153,6 @@ I want a chatbot that references a PDF about Nandesh Kalashetti’s background, 
         HumanMessage(content=f"{combined_context}\n\n📝 Question: {user_query}")
     ]
     try:
-        # Run the synchronous chat.invoke method asynchronously using asyncio.to_thread
         response = await asyncio.to_thread(chat.invoke, messages)
         if response:
             memory.save_context({"input": user_query}, {"output": response.content})
@@ -159,27 +161,13 @@ I want a chatbot that references a PDF about Nandesh Kalashetti’s background, 
             print(f"💾 Memory Usage: {get_memory_usage()} past interactions")
             print(f"Evaluation Score (Semantic Similarity): {evaluation_score:.2f}")
             return response.content
-        return "⚠️ No response received."
+        return "⚠ No response received."
     except Exception as e:
-        return f"⚠️ API Error: {str(e)}"
+        return f"⚠ API Error: {str(e)}"
 
-import os
-import PyPDF2
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
-import chromadb
-
-# 1. Initialize ChromaDB Client
-chroma_client = chromadb.PersistentClient(path="./chroma_db_4")
-try:
-    collection = chroma_client.get_collection(name="ai_knowledge_base")
-except chromadb.errors.InvalidCollectionException:
-    collection = chroma_client.create_collection(name="ai_knowledge_base")
-
-# 2. Initialize Embedding Model
-embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-
-# 3. Function to Extract Text from PDF
+# ------------------------------------------------
+# 4. PDF Extraction and Chunking Functions
+# ------------------------------------------------
 def extract_text_from_pdf(pdf_path):
     """Extract text from a PDF file using PyPDF2."""
     text = ""
@@ -191,41 +179,8 @@ def extract_text_from_pdf(pdf_path):
                 text += page_text + "\n"
     return text
 
-# 4. Function to Chunk and Upsert into ChromaDB
-def chunk_and_upsert(document_text, chunk_size=200, chunk_overlap=50, batch_size=10):
-    """
-    Split a document into chunks and upsert them into ChromaDB.
-    """
-    splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-    chunks = splitter.split_text(document_text)
-
-    for i in range(0, len(chunks), batch_size):
-        batch = chunks[i : i + batch_size]
-        embeddings = [embedding_model.embed_query(chunk) for chunk in batch]
-        collection.add(
-            documents=batch,
-            embeddings=embeddings,
-            ids=[f"doc_chunk_{i+j}" for j in range(len(batch))],
-            metadatas=[{"chunk_index": i+j} for j in range(len(batch))]
-        )
-    return f"Upserted {len(chunks)} chunks to the database."
-
-# 5. Main Function to Ingest PDF
-if __name__ == "__main__":
-    pdf_path = "./resume.pdf"  # <-- Make sure the PDF is in the same folder or provide the full path
-    if not os.path.exists(pdf_path):
-        print(f"⚠️ PDF file not found at: {pdf_path}")
-    else:
-        text = extract_text_from_pdf(pdf_path)
-        if text.strip():
-            result = chunk_and_upsert(text, chunk_size=200, chunk_overlap=50)
-            print(result)
-        else:
-            print("⚠️ No text found in the PDF!")
-
-
 # ------------------------------------------------
-# 4. Streamlit Web UI (with Sidebar)
+# 5. Streamlit Web UI (with Sidebar)
 # ------------------------------------------------
 def add_custom_css():
     st.markdown(
@@ -364,20 +319,15 @@ def streamlit_chat():
     # ----------------------------
     # SIDEBAR (Navbar) Section
     # ----------------------------
-    #st.sidebar.image('photo2.jpg', use_container_width=True)
-    st.sidebar.header("**Nandesh Kalashetti**")
+    st.sidebar.header("*Nandesh Kalashetti*")
     st.sidebar.write("GenAi Developer And Full-stack Web-Developer")
-
-    # If your Streamlit version supports `divider='rainbow'`, keep it.
-    # Otherwise, remove `divider='rainbow'` or replace it with st.sidebar.divider().
-    st.sidebar.header("Contact Information", divider='rainbow')
+    st.sidebar.header("Contact Information")
     st.sidebar.write("Feel free to reach out through the following")
     st.sidebar.write("[LinkedIn](https://www.linkedin.com/in/nandesh-kalashetti-333a78250/)")
     st.sidebar.write("[GitHub](https://github.com/Universe7Nandu/)")
     st.sidebar.write("[Email](mailto:nandeshkalshetti1@gmail.com)")
-    st.sidebar.write("Developed by Nandesh Kalshetti", unsafe_allow_html=True)
-    # ----------------------------
-
+    st.sidebar.write("Developed by Nandesh Kalashetti", unsafe_allow_html=True)
+    
     st.title("🤖 PersonalChatbot-GenAI")
     st.write("An advanced chatbot powered by RAG, prompt engineering, and optimized inference.")
 
@@ -387,7 +337,7 @@ def streamlit_chat():
     # Form for user input
     with st.form(key="chat_form", clear_on_submit=True):
         user_query = st.text_input("Ask a question:")
-        submit_button = st.form_submit_button(label="Send ✈️")
+        submit_button = st.form_submit_button(label="Send ✈")
 
     if submit_button and user_query:
         with st.spinner("Generating response..."):
@@ -411,7 +361,20 @@ def streamlit_chat():
         )
 
 # ------------------------------------------------
-# 5. Main Execution
+# 6. Main Execution
 # ------------------------------------------------
 if __name__ == "__main__":
+    # Ingest the PDF once (comment out if you don't want to re-upsert each run)
+    pdf_path = "./resume.pdf"
+    if os.path.exists(pdf_path):
+        text = extract_text_from_pdf(pdf_path)
+        if text.strip():
+            result_msg = chunk_and_upsert(text, chunk_size=200, chunk_overlap=50)
+            print(result_msg)
+        else:
+            print("⚠ No text found in the PDF!")
+    else:
+        print(f"⚠ PDF file not found at: {pdf_path}")
+
+    # Launch the Streamlit chat UI
     streamlit_chat()
