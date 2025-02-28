@@ -170,7 +170,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 import chromadb
 
 # 1. Initialize ChromaDB Client
-chroma_client = chromadb.PersistentClient(path="./chroma_db_5")
+chroma_client = chromadb.PersistentClient(path="./chroma_db_4")
 try:
     collection = chroma_client.get_collection(name="ai_knowledge_base")
 except chromadb.errors.InvalidCollectionException:
