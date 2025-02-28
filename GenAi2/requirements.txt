@@ -8,3 +8,4 @@ langchain-huggingface>=0.0.1
 langchain-groq>=0.0.1
 sentence-transformers>=2.2.0
 torch>=1.7.0
+pdfplumber
