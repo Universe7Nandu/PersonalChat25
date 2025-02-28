@@ -1,5 +1,4 @@
 pysqlite3-binary>=0.4.6
-chromadb>=0.3.0
 streamlit>=1.10.0
 numpy>=1.21.0
 PyPDF2>=2.0.0
