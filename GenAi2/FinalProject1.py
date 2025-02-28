@@ -382,19 +382,12 @@ def chatgpt_like_ui():
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-
 def send_message(user_query):
     print("[DEBUG] user_query from input:", user_query)
     with st.spinner("Generating response..."):
         response = asyncio.run(query_llama3_async(user_query))
     print("[DEBUG] Model responded with:", response)
     st.session_state.chat_history.append({"query": user_query, "response": response})
- Also provide a Send button that calls send_message()
-    if st.button("Send"):
-        send_message()
-    st.markdown("</div>", unsafe_allow_html=True)  # End chat-input-area
-
-    st.markdown("</div>", unsafe_allow_html=True)  # End chat-container
 
 def main():
     # Ingest PDF (comment out if you don't want to re-ingest each run)
