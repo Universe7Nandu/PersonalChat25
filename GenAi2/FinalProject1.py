@@ -5,7 +5,7 @@ import asyncio
 import streamlit as st
 from streamlit.runtime.scriptrunner import add_script_run_ctx
 
-import chromadb
+
 from chromadb.config import Settings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
