@@ -23,7 +23,7 @@ warnings.filterwarnings("ignore", message=".*ScriptRunContext.*")
 # -----------------------
 # 1. Initialize ChromaDB, Embeddings, and Chat Model
 # -----------------------
-chroma_client = chromadb.PersistentClient(path="./chroma_db_5")  # new DB path
+chroma_client = chromadb.PersistentClient(path="./chroma_db_4")  # new DB path
 try:
     collection = chroma_client.get_collection(name="my_new_knowledge_base")
 except chromadb.errors.InvalidCollectionException:
