@@ -30,13 +30,12 @@ import pdfplumber
 
 # Apply nest_asyncio patch
 nest_asyncio.apply()
-
 warnings.filterwarnings("ignore", message=".*ScriptRunContext.*")
 
 # -----------------------
-# 1. Initialize ChromaDB, Embeddings, and Chat Model
+# Initialize ChromaDB, Embeddings, and Chat Model
 # -----------------------
-chroma_client = chromadb.PersistentClient(path="./chroma_db_4")
+chroma_client = chromadb.PersistentClient(path="./chroma_db_5")
 try:
     collection = chroma_client.get_collection(name="my_new_knowledge_base")
 except chromadb.errors.InvalidCollectionException:
@@ -45,12 +44,12 @@ except chromadb.errors.InvalidCollectionException:
 embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
 
-# Replace with your actual Groq API key
+# Use provided API key
 GROQ_API_KEY = "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"
 chat = ChatGroq(temperature=0.7, model_name="llama3-70b-8192", groq_api_key=GROQ_API_KEY)
 
 # -----------------------
-# 2. Conversation Memory
+# Conversation Memory
 # -----------------------
 memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
@@ -319,7 +318,7 @@ def chatgpt_like_ui():
     st.markdown(
         """
         <div class='chat-header'><h2>🤖 PersonalChatbot-GenAI</h2></div>
-        <div class='chat-subheader'>Ask me about Nandesh's background, skills, projects, and more!</div>
+        <div class='chat-subheader'>Ask me about my resume!</div>
         """,
         unsafe_allow_html=True
     )
@@ -343,7 +342,7 @@ def chatgpt_like_ui():
         )
     st.markdown("</div>", unsafe_allow_html=True)
     with st.form(key="chat_form", clear_on_submit=True):
-        user_query = st.text_input("", key="user_query_input", placeholder="Ask me anything...")
+        user_query = st.text_input("", key="user_query_input", placeholder="Ask me anything about my resume...")
         submit_button = st.form_submit_button(label="Send")
         if submit_button and user_query.strip():
             send_message(user_query)
