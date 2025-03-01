@@ -1,15 +1,18 @@
 import sys
-import sqlite3
 from distutils.version import LooseVersion
-# --- SQLite Patch ---
-if LooseVersion(sqlite3.sqlite_version) < LooseVersion("3.35.0"):
-    try:
-        import pysqlite3
-        sys.modules["sqlite3"] = pysqlite3
-    except ImportError:
+
+# Attempt to force use of pysqlite3's DB-API if available.
+try:
+    import pysqlite3.dbapi2 as sqlite3
+    sys.modules["sqlite3"] = sqlite3
+    print("Using pysqlite3 version:", sqlite3.sqlite_version)
+except ImportError:
+    import sqlite3
+    print("Using system sqlite3 version:", sqlite3.sqlite_version)
+    if LooseVersion(sqlite3.sqlite_version) < LooseVersion("3.35.0"):
         raise RuntimeError(
             "Your system has an unsupported version of sqlite3. "
-            "ChromaDB requires sqlite3 >= 3.35.0. Please install pysqlite3-binary."
+            "ChromaDB requires sqlite3 >= 3.35.0. Please upgrade or install pysqlite3-binary."
         )
 
 import warnings
@@ -35,7 +38,8 @@ warnings.filterwarnings("ignore", message=".*ScriptRunContext.*")
 # -----------------------
 # Initialize ChromaDB, Embeddings, and Chat Model
 # -----------------------
-chroma_client = chromadb.PersistentClient(path="./chroma_db_5")
+# Use your existing DB folder "chroma_db_4" (instead of chroma_db_5)
+chroma_client = chromadb.PersistentClient(path="./chroma_db_4")
 try:
     collection = chroma_client.get_collection(name="my_new_knowledge_base")
 except chromadb.errors.InvalidCollectionException:
