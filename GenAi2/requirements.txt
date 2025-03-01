@@ -1,1 +1,12 @@
-pip install --upgrade streamlit chromadb langchain langchain-huggingface groq langchain-community sentence-transformers pdfplumber pdfminer.six nest-asyncio pysqlite3-binary PyPDF2
+ streamlit 
+chromadb
+langchain
+langchain-huggingface
+groq 
+langchain-community 
+sentence-transformers
+pdfplumber 
+pdfminer.six 
+nest-asyncio 
+pysqlite3-binary 
+PyPDF2
