@@ -3,3 +3,6 @@ sqlite3
 poppler-utils  # Required for pdfplumber
 libgomp1       # Required for ChromaDB
 python3-dev
+libsqlite3-dev
+libffi-dev
+libjpeg-dev
