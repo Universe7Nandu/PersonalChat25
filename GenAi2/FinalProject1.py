@@ -1,4 +1,4 @@
-# FinalProject1_updated.py
+# FinalProject1_updated_v2.py
 import sys
 import os
 
@@ -57,170 +57,174 @@ def chunk_text(text):
 # 6. STREAMLIT UI
 def main():
     st.set_page_config(
-        page_title="Nandesh's AI Resume Assistant", 
+        page_title="Nandesh's AI Resume Assistant",
         page_icon="🤖",
         layout="wide"
     )
     
-    # Custom CSS for enhanced UI
+    # Inject modern CSS for a sleek, glassmorphic look
     st.markdown("""
     <style>
-    /* Global Styles */
-    body {
-        background: #f4f7f6;
-        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-        color: #343a40;
+    /* Import Google Font */
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+    html, body {
+        margin: 0;
+        padding: 0;
+        background: linear-gradient(135deg, #1d2b64, #f8cdda);
+        font-family: 'Roboto', sans-serif;
     }
-    /* Header Styles */
-    header, .stHeader {
-        background: linear-gradient(135deg, #0062E6, #33AEFF);
-        color: #fff;
-        padding: 20px;
-        border-radius: 8px;
+    
+    .main-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 40px;
+    }
+    
+    header {
         text-align: center;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        margin-bottom: 30px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     }
-    /* Sidebar Styles */
+    
+    h1 {
+        font-size: 3em;
+        color: #fff;
+        margin: 0;
+    }
+    
+    /* Sidebar */
     [data-testid="stSidebar"] {
-        background: #343a40;
+        background: linear-gradient(135deg, #0f2027, #203a43, #2c5364) !important;
         color: #fff;
         padding: 20px;
+    }
+    [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
+        color: #ffdd57;
     }
     [data-testid="stSidebar"] a {
         color: #ffdd57;
         text-decoration: none;
     }
-    [data-testid="stSidebar"] a:hover {
-        text-decoration: underline;
-    }
-    /* Chat Box Styles */
+    
+    /* Chat Interface */
     .chat-box {
-        background: #fff;
-        border: 1px solid #dfe6e9;
-        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.85);
+        border-radius: 12px;
         padding: 20px;
-        margin: 10px 0;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 15px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
-    /* Message Styles */
+    
     .user-message {
         color: #007BFF;
-        font-weight: 600;
-        margin-bottom: 8px;
+        font-weight: bold;
+        margin-bottom: 10px;
     }
+    
     .bot-message {
-        color: #343a40;
-        line-height: 1.5;
+        color: #333;
+        line-height: 1.6;
     }
-    /* Input Styles */
-    div[data-baseweb="input"] > div {
-        border-radius: 8px;
-        border: 1px solid #ced4da;
-        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-    /* Button Styles */
-    button[kind] {
-        border-radius: 8px;
-        font-weight: 600;
-        background: linear-gradient(135deg, #33AEFF, #0062E6);
-        color: #fff;
+    
+    /* Buttons */
+    .stButton>button {
+        background: linear-gradient(135deg, #ff7e5f, #feb47b);
         border: none;
+        border-radius: 8px;
         padding: 10px 20px;
-        transition: transform 0.2s ease;
+        color: #fff;
+        font-weight: 600;
+        transition: transform 0.2s;
     }
-    button[kind]:hover {
-        transform: translateY(-2px);
+    .stButton>button:hover {
+        transform: scale(1.03);
     }
-    /* Scrollbar Styles */
-    ::-webkit-scrollbar {
-        width: 8px;
+    
+    /* Text Input */
+    .stTextInput>div>div>input {
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        padding: 10px;
     }
-    ::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 4px;
-    }
-    ::-webkit-scrollbar-thumb {
-        background: #ccc;
-        border-radius: 4px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-        background: #b3b3b3;
+    
+    /* Process Resume button margin */
+    .process-btn {
+        margin-top: 10px;
     }
     </style>
     """, unsafe_allow_html=True)
-
-    # Sidebar with About info and resume update option
-    with st.sidebar:
-        st.header("About")
-        st.markdown("""
-        **Nandesh Kalashetti**  
-        GenAI Developer & Full-Stack Engineer  
-        [LinkedIn](https://linkedin.com/in/nandesh-kalashetti) | 
-        [GitHub](https://github.com/Universe7Nandu)
-        """)
-        st.file_uploader("Update Resume", type="pdf", key="resume_update")
-
-    st.header("AI Resume Assistant 🤖")
     
-    # Resume File Upload and Processing Section
-    uploaded_file = st.file_uploader("Upload Resume PDF", type="pdf", key="resume_pdf")
-    if uploaded_file:
-        # Save file in session_state
-        st.session_state.uploaded_resume = uploaded_file
-        if "resume_processed" not in st.session_state:
-            st.session_state.resume_processed = False
-        if not st.session_state.resume_processed:
-            if st.button("Process Resume"):
-                with st.spinner("Processing resume..."):
-                    text = process_pdf(uploaded_file)
-                    if text:
-                        chunks = chunk_text(text)
-                        vector_store = initialize_vector_store()
-                        vector_store.add_texts(chunks)
-                        st.session_state.resume_processed = True
-                        st.success(f"Processed {len(chunks)} resume sections")
+    # Main header
+    st.markdown("<header><h1>AI Resume Assistant 🤖</h1></header>", unsafe_allow_html=True)
+    
+    # Layout: Two columns (Left: Resume Upload/Processing, Right: Chat Interface)
+    col1, col2 = st.columns([1, 2])
+    
+    # Left Column: Resume Section
+    with col1:
+        st.subheader("Resume Upload & Processing")
+        uploaded_file = st.file_uploader("Upload Resume PDF", type="pdf", key="resume_pdf")
+        if uploaded_file:
+            st.session_state.uploaded_resume = uploaded_file
+            if "resume_processed" not in st.session_state:
+                st.session_state.resume_processed = False
+            if not st.session_state.resume_processed:
+                if st.button("Process Resume", key="process_btn", help="Click to extract and index your resume"):
+                    with st.spinner("Processing resume..."):
+                        text = process_pdf(uploaded_file)
+                        if text:
+                            chunks = chunk_text(text)
+                            vector_store = initialize_vector_store()
+                            vector_store.add_texts(chunks)
+                            st.session_state.resume_processed = True
+                            st.success(f"Processed {len(chunks)} resume sections")
+            else:
+                st.info("Resume processed successfully!")
         else:
-            st.info("Resume has been processed. You can now ask questions about your qualifications.")
+            st.info("Please upload your resume PDF.")
     
-    # Chat Interface Section
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
-    
-    user_query = st.text_input("Ask about my qualifications:")
-    
-    if user_query:
-        if not st.session_state.get("resume_processed", False):
-            st.warning("Please upload and process your resume first!")
-        else:
-            with st.spinner("Generating response..."):
-                vector_store = initialize_vector_store()
-                llm = ChatGroq(
-                    temperature=0.7,
-                    groq_api_key=GROQ_API_KEY,
-                    model_name="mixtral-8x7b-32768"
-                )
-                # Retrieve context from resume embeddings
-                docs = vector_store.similarity_search(user_query, k=3)
-                context = "\n".join([d.page_content for d in docs])
-                # Generate response using async function
-                response = asyncio.run(llm.ainvoke([{
-                    "role": "user",
-                    "content": f"Context: {context}\nQuestion: {user_query}"
-                }]))
-                st.session_state.chat_history.append({
-                    "question": user_query,
-                    "answer": response.content
-                })
-    
-    # Display Chat History
-    for chat in st.session_state.chat_history:
-        with st.container():
+    # Right Column: Chat Section
+    with col2:
+        st.subheader("Chat with AI")
+        if "chat_history" not in st.session_state:
+            st.session_state.chat_history = []
+            
+        user_query = st.text_input("Ask about my qualifications:")
+        
+        if user_query:
+            if not st.session_state.get("resume_processed", False):
+                st.warning("Please upload and process your resume first!")
+            else:
+                with st.spinner("Generating response..."):
+                    vector_store = initialize_vector_store()
+                    llm = ChatGroq(
+                        temperature=0.7,
+                        groq_api_key=GROQ_API_KEY,
+                        model_name="mixtral-8x7b-32768"
+                    )
+                    docs = vector_store.similarity_search(user_query, k=3)
+                    context = "\n".join([d.page_content for d in docs])
+                    response = asyncio.run(llm.ainvoke([{
+                        "role": "user",
+                        "content": f"Context: {context}\nQuestion: {user_query}"
+                    }]))
+                    st.session_state.chat_history.append({
+                        "question": user_query,
+                        "answer": response.content
+                    })
+        
+        # Display chat history as modern chat bubbles
+        for chat in st.session_state.chat_history:
             st.markdown(f"""
             <div class="chat-box">
                 <p class="user-message">You: {chat['question']}</p>
                 <p class="bot-message">AI: {chat['answer']}</p>
             </div>
             """, unsafe_allow_html=True)
-
+    
 if __name__ == "__main__":
     main()
