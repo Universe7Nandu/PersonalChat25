@@ -147,7 +147,7 @@ def main():
     with st.sidebar:
         st.header("About")
         # Display photo, role and profiles
-        st.image("./photo2.jpg", width=150)
+       # st.image("./photo2.jpg", width=150)
         st.markdown("""
 **Nandesh Kalashetti**  
 *GenAi Developer*  
