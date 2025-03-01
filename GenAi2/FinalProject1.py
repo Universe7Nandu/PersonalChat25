@@ -1,7 +1,7 @@
 import sys
 import sqlite3
 from distutils.version import LooseVersion
-# Check sqlite3 version and patch if necessary
+# --- SQLite Patch ---
 if LooseVersion(sqlite3.sqlite_version) < LooseVersion("3.35.0"):
     try:
         import pysqlite3
@@ -15,7 +15,7 @@ if LooseVersion(sqlite3.sqlite_version) < LooseVersion("3.35.0"):
 import warnings
 import os
 import asyncio
-import nest_asyncio  # For nested asyncio loops in Streamlit
+import nest_asyncio  # To allow nested asyncio loops in Streamlit
 import streamlit as st
 
 import chromadb
@@ -27,20 +27,17 @@ from langchain.schema import HumanMessage, SystemMessage
 from langchain.memory import ConversationBufferMemory
 from sentence_transformers import SentenceTransformer, util
 import pdfplumber
-from pdfminer.layout import LAParams
 
-# Patch asyncio to work with Streamlit's event loop
+# Apply nest_asyncio patch
 nest_asyncio.apply()
 
-# -----------------------
-# Suppress certain warnings
-# -----------------------
+# --- Suppress warnings ---
 warnings.filterwarnings("ignore", message=".*ScriptRunContext.*")
 
 # -----------------------
 # 1. Initialize ChromaDB, Embeddings, and Chat Model
 # -----------------------
-chroma_client = chromadb.PersistentClient(path="./chroma_db_4")  # New DB path
+chroma_client = chromadb.PersistentClient(path="./chroma_db_5")
 try:
     collection = chroma_client.get_collection(name="my_new_knowledge_base")
 except chromadb.errors.InvalidCollectionException:
@@ -62,12 +59,10 @@ memory = ConversationBufferMemory(memory_key="chat_history", return_messages=Tru
 # 3. Helper Functions
 # -----------------------
 def get_recent_chat_history(n=8):
-    """Return the last n conversation turns from memory."""
     past_chat_history = memory.load_memory_variables({}).get("chat_history", [])
     return past_chat_history[-n:] if past_chat_history else ["No past conversation history."]
 
 def retrieve_context(query, top_k=3):
-    """Retrieve relevant documents from ChromaDB using embeddings."""
     query_embedding = embedding_model.embed_query(query)
     results = collection.query(query_embeddings=[query_embedding], n_results=top_k)
     if results and results.get("documents"):
@@ -78,7 +73,6 @@ def retrieve_context(query, top_k=3):
     return "No relevant context found."
 
 def evaluate_response(user_query, generated_response, context):
-    """Evaluate the response by comparing it with the retrieved context."""
     if isinstance(context, list):
         context = " ".join(context)
     if not context or context.strip() == "" or context == "No relevant context found.":
@@ -89,15 +83,13 @@ def evaluate_response(user_query, generated_response, context):
     return similarity_score
 
 def send_evaluation_to_arize(user_query, generated_response, evaluation_score):
-    """Log evaluation metrics (placeholder)."""
     print(f"[DEBUG] Arize Log | Query: {user_query} | Score: {evaluation_score:.2f}")
 
 def chunk_document(document_text, chunk_size=200, chunk_overlap=50, batch_size=10):
-    """Split a document into chunks and upsert them into ChromaDB."""
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     chunks = text_splitter.split_text(document_text)
     for i in range(0, len(chunks), batch_size):
-        batch = chunks[i:i + batch_size]
+        batch = chunks[i:i+batch_size]
         embeddings = [embedding_model.embed_query(chunk) for chunk in batch]
         collection.add(
             documents=batch,
@@ -108,7 +100,6 @@ def chunk_document(document_text, chunk_size=200, chunk_overlap=50, batch_size=1
     return f"Upserted {len(chunks)} chunks to the database."
 
 async def query_llama3_async(user_query):
-    """Get a response from the Groq LLaMA model with debug prints."""
     system_prompt = """
 ## **Goal**  
 I want a chatbot that references a PDF about Nandesh Kalashetti’s background, skills, projects, and certifications. It should provide **short answers** (with emojis) for simple questions, and **detailed explanations** (referencing PDF insights) for more complex questions. The chatbot must maintain a warm, human tone and never reveal any non-human origins.
@@ -165,22 +156,20 @@ I want a chatbot that references a PDF about Nandesh Kalashetti’s background, 
 # 4. PDF Extraction and Ingestion
 # -----------------------
 def extract_text_from_pdf(pdf_path):
-    """Extract text from a PDF file using pdfplumber with custom LAParams."""
     try:
-        laparams = LAParams(line_overlap=0.7)
-        with pdfplumber.open(pdf_path, laparams=laparams) as pdf:
-            text_pages = []
+        # Use a straightforward extraction without extra parameters
+        with pdfplumber.open(pdf_path) as pdf:
+            text = ""
             for page in pdf.pages:
-                page_text = page.extract_text(x_tolerance=1)
+                page_text = page.extract_text()
                 if page_text:
-                    text_pages.append(page_text)
-            return "\n".join(text_pages)
+                    text += page_text + "\n"
+            return text
     except Exception as e:
         print("Error extracting text from PDF:", e)
         return ""
 
 def ingest_pdf_into_chromadb(pdf_path):
-    """Extract text, chunk it, and store embeddings in ChromaDB."""
     if not os.path.exists(pdf_path):
         print(f"⚠️ PDF file not found at: {pdf_path}")
         return
@@ -196,7 +185,6 @@ def ingest_pdf_into_chromadb(pdf_path):
 # 5. Streamlit UI
 # -----------------------
 def add_custom_css():
-    """Inject custom CSS for a compact, dark-themed ChatGPT-style UI."""
     st.markdown(
         """
         <style>
@@ -332,7 +320,7 @@ def chatgpt_like_ui():
             for i, ch in enumerate(st.session_state.chat_history):
                 st.write(f"**{i+1}.** {ch['query']}")
         st.markdown("---")
-        img_path = "./photo2.jpg"
+        img_path = "photo2.jpg"
         if os.path.exists(img_path):
             st.image(img_path, use_container_width=True)
         else:
@@ -381,9 +369,10 @@ def send_message(user_query):
     with st.spinner("Generating response..."):
         response = asyncio.run(query_llama3_async(user_query))
     st.session_state.chat_history.append({"query": user_query, "response": response})
+    # Clear the input field explicitly
+    st.session_state.user_query_input = ""
 
 def main():
-    # Ingest PDF (comment out if you don't want to re-ingest on each run)
     pdf_path = "./resume.pdf"
     ingest_pdf_into_chromadb(pdf_path)
     chatgpt_like_ui()
