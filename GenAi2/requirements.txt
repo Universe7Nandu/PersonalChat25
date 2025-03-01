@@ -16,3 +16,13 @@ pdfplumber
 pdfminer.six
 nest_asyncio
 pysqlite3-binary
+# requirements.txt
+pysqlite3-binary==0.5.2
+chromadb==0.4.24
+streamlit==1.33.0
+PyPDF2==3.0.1
+langchain==0.1.14
+langchain-community==0.0.29
+langchain-huggingface==0.0.6
+sentence-transformers==2.6.0
+groq==0.5
