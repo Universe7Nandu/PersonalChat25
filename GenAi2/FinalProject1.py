@@ -1,4 +1,4 @@
-# FinalProject1_updated_v4.py
+# FinalProject1_updated_v5.py
 import sys
 import os
 
@@ -143,33 +143,34 @@ def main():
     </style>
     """, unsafe_allow_html=True)
     
-    # Sidebar: About info and conversation history with New Chat button
+    # Sidebar: About section and conversation history (only user questions)
     with st.sidebar:
         st.header("About")
+        # Display photo, role and profiles
+        st.image("photo2.jpg", width=150)
         st.markdown("""
-        **Nandesh Kalashetti**  
-        GenAI Developer & Full-Stack Engineer  
-        [LinkedIn](https://linkedin.com/in/nandesh-kalashetti) | 
-        [GitHub](https://github.com/Universe7Nandu)
+**Nandesh Kalashetti**  
+*GenAi Developer*  
+
+[LinkedIn](https://www.linkedin.com/in/nandesh-kalashetti-333a78250/) | [GitHub](https://github.com/Universe7Nandu)
         """)
         st.markdown("---")
         st.header("Conversation History")
-        # Button to start a new chat (clear conversation history)
+        # Button to start a new conversation (clear history)
         if st.button("New Chat", key="new_chat"):
             st.session_state.chat_history = []
             st.success("Started new conversation!")
-        # Display past conversation history in a concise format
+        # Display only user questions from history
         if st.session_state.get("chat_history"):
             for i, chat in enumerate(st.session_state.chat_history, 1):
                 st.markdown(f"**{i}. You:** {chat['question']}")
-                st.markdown(f"**AI:** {chat['answer']}")
         else:
             st.info("No conversation history yet.")
     
-    # Main header in the main container
+    # Main header
     st.markdown("<header><h1>AI Resume Assistant 🤖</h1></header>", unsafe_allow_html=True)
     
-    # Main layout: Two columns (Left: Resume, Right: Chat)
+    # Main layout: Two columns (Left: Resume Upload & Processing, Right: Chat Interface)
     col1, col2 = st.columns([1, 2])
     
     # Left Column: Resume Upload & Processing
@@ -227,7 +228,7 @@ def main():
                     "answer": response.content
                 })
         
-        # Display chat history as stylish chat bubbles
+        # Display chat history as modern chat bubbles
         for chat in st.session_state.chat_history:
             st.markdown(f"""
             <div class="chat-box">
