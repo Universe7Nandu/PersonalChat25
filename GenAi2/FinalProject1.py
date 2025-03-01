@@ -1,4 +1,4 @@
-# FinalProject1_updated_v2.py
+# FinalProject1_updated_v3.py
 import sys
 import os
 
@@ -57,30 +57,26 @@ def chunk_text(text):
 # 6. STREAMLIT UI
 def main():
     st.set_page_config(
-        page_title="Nandesh's AI Resume Assistant",
+        page_title="Nandesh's AI Resume Assistant", 
         page_icon="🤖",
         layout="wide"
     )
     
-    # Inject modern CSS for a sleek, glassmorphic look
+    # Modern Glassmorphic CSS
     st.markdown("""
     <style>
-    /* Import Google Font */
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
-
     html, body {
         margin: 0;
         padding: 0;
         background: linear-gradient(135deg, #1d2b64, #f8cdda);
         font-family: 'Roboto', sans-serif;
     }
-    
     .main-container {
         max-width: 1200px;
         margin: 0 auto;
         padding: 40px;
     }
-    
     header {
         text-align: center;
         padding: 20px;
@@ -89,13 +85,11 @@ def main():
         border-radius: 12px;
         box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     }
-    
     h1 {
         font-size: 3em;
         color: #fff;
         margin: 0;
     }
-    
     /* Sidebar */
     [data-testid="stSidebar"] {
         background: linear-gradient(135deg, #0f2027, #203a43, #2c5364) !important;
@@ -109,8 +103,7 @@ def main():
         color: #ffdd57;
         text-decoration: none;
     }
-    
-    /* Chat Interface */
+    /* Chat Bubble Styles */
     .chat-box {
         background: rgba(255, 255, 255, 0.85);
         border-radius: 12px;
@@ -118,19 +111,15 @@ def main():
         margin-bottom: 15px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
-    
     .user-message {
         color: #007BFF;
         font-weight: bold;
         margin-bottom: 10px;
     }
-    
     .bot-message {
         color: #333;
         line-height: 1.6;
     }
-    
-    /* Buttons */
     .stButton>button {
         background: linear-gradient(135deg, #ff7e5f, #feb47b);
         border: none;
@@ -143,25 +132,21 @@ def main():
     .stButton>button:hover {
         transform: scale(1.03);
     }
-    
-    /* Text Input */
     .stTextInput>div>div>input {
         border-radius: 8px;
         border: 1px solid #ccc;
         padding: 10px;
     }
-    
-    /* Process Resume button margin */
     .process-btn {
         margin-top: 10px;
     }
     </style>
     """, unsafe_allow_html=True)
     
-    # Main header
+    # Header
     st.markdown("<header><h1>AI Resume Assistant 🤖</h1></header>", unsafe_allow_html=True)
     
-    # Layout: Two columns (Left: Resume Upload/Processing, Right: Chat Interface)
+    # Main layout container with two columns
     col1, col2 = st.columns([1, 2])
     
     # Left Column: Resume Section
@@ -185,39 +170,41 @@ def main():
             else:
                 st.info("Resume processed successfully!")
         else:
-            st.info("Please upload your resume PDF.")
+            st.info("Upload your resume PDF to enrich your chat responses.")
     
-    # Right Column: Chat Section
+    # Right Column: Chat Section (always available)
     with col2:
         st.subheader("Chat with AI")
         if "chat_history" not in st.session_state:
             st.session_state.chat_history = []
             
-        user_query = st.text_input("Ask about my qualifications:")
+        user_query = st.text_input("Your message:")
         
         if user_query:
-            if not st.session_state.get("resume_processed", False):
-                st.warning("Please upload and process your resume first!")
-            else:
-                with st.spinner("Generating response..."):
+            with st.spinner("Generating response..."):
+                # If resume has been processed, include context from the resume
+                if st.session_state.get("resume_processed", False):
                     vector_store = initialize_vector_store()
-                    llm = ChatGroq(
-                        temperature=0.7,
-                        groq_api_key=GROQ_API_KEY,
-                        model_name="mixtral-8x7b-32768"
-                    )
                     docs = vector_store.similarity_search(user_query, k=3)
                     context = "\n".join([d.page_content for d in docs])
-                    response = asyncio.run(llm.ainvoke([{
-                        "role": "user",
-                        "content": f"Context: {context}\nQuestion: {user_query}"
-                    }]))
-                    st.session_state.chat_history.append({
-                        "question": user_query,
-                        "answer": response.content
-                    })
+                    prompt = f"Context: {context}\nQuestion: {user_query}"
+                else:
+                    prompt = user_query
+                llm = ChatGroq(
+                    temperature=0.7,
+                    groq_api_key=GROQ_API_KEY,
+                    model_name="mixtral-8x7b-32768"
+                )
+                response = asyncio.run(llm.ainvoke([{
+                    "role": "user",
+                    "content": prompt
+                }]))
+                st.session_state.chat_history.append({
+                    "question": user_query,
+                    "answer": response.content
+                })
         
-        # Display chat history as modern chat bubbles
+        # Display Chat History in stylish chat bubbles
         for chat in st.session_state.chat_history:
             st.markdown(f"""
             <div class="chat-box">
