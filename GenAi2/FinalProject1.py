@@ -1,7 +1,7 @@
 import sys
 from distutils.version import LooseVersion
 
-# Attempt to force use of pysqlite3's DB-API if available.
+# --- SQLite Patch ---
 try:
     import pysqlite3.dbapi2 as sqlite3
     sys.modules["sqlite3"] = sqlite3
@@ -38,7 +38,6 @@ warnings.filterwarnings("ignore", message=".*ScriptRunContext.*")
 # -----------------------
 # Initialize ChromaDB, Embeddings, and Chat Model
 # -----------------------
-# Use your existing DB folder "chroma_db_4" (instead of chroma_db_5)
 chroma_client = chromadb.PersistentClient(path="./chroma_db_4")
 try:
     collection = chroma_client.get_collection(name="my_new_knowledge_base")
@@ -346,7 +345,12 @@ def chatgpt_like_ui():
         )
     st.markdown("</div>", unsafe_allow_html=True)
     with st.form(key="chat_form", clear_on_submit=True):
-        user_query = st.text_input("", key="user_query_input", placeholder="Ask me anything about my resume...")
+        user_query = st.text_input(
+            "Your Query", 
+            key="user_query_input", 
+            placeholder="Ask me anything about my resume...",
+            label_visibility="hidden"
+        )
         submit_button = st.form_submit_button(label="Send")
         if submit_button and user_query.strip():
             send_message(user_query)
@@ -356,7 +360,7 @@ def send_message(user_query):
     with st.spinner("Generating response..."):
         response = asyncio.run(query_llama3_async(user_query))
     st.session_state["chat_history"].append({"query": user_query, "response": response})
-    st.session_state["user_query_input"] = ""
+    # Do not modify user_query_input here because clear_on_submit handles it.
 
 def main():
     pdf_path = "./resume.pdf"
