@@ -33,7 +33,7 @@ embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-Mi
 semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
 
 # Replace with your actual Groq API key
-GROQ_API_KEY = "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"
+GROQ_API_KEY = "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"
 chat = ChatGroq(temperature=0.7, model_name="llama3-70b-8192", groq_api_key=GROQ_API_KEY)
 
 # -----------------------
@@ -377,11 +377,20 @@ def chatgpt_like_ui():
     st.markdown("</div>", unsafe_allow_html=True)
 
 def send_message(user_query):
-    print("[DEBUG] user_query from input:", user_query)
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     with st.spinner("Generating response..."):
-        response = asyncio.run(query_llama3_async(user_query))
-    print("[DEBUG] Model responded with:", response)
+        response = loop.run_until_complete(query_llama3_async(user_query))
     st.session_state.chat_history.append({"query": user_query, "response": response})
+
+def extract_text_from_pdf(pdf_path):
+    try:
+        # Add PDF parser parameters
+        with pdfplumber.open(pdf_path, laparams={"line_overlap": 0.7}) as pdf:
+            return "\n".join([page.extract_text(x_tolerance=1) for page in pdf.pages])
+    except Exception as e:
+        return f"PDF Error: {str(e)}"
+
 
 def main():
     # Ingest PDF (comment out if you don't want to re-ingest each run)
