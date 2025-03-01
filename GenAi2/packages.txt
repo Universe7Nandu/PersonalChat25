@@ -1,4 +1,6 @@
 libsqlite3-dev
+libsqlite3-dev
+libffi-dev
 sqlite3
 poppler-utils  # Required for pdfplumber
 libgomp1       # Required for ChromaDB
