@@ -147,7 +147,7 @@ def main():
     with st.sidebar:
         st.header("About")
         # Display photo, role and profiles
-       # st.image("./photo2.jpg", width=150)
+        st.image("photo2.jpg", width=150)
         st.markdown("""
 **Nandesh Kalashetti**  
 *GenAi Developer*  
@@ -163,7 +163,7 @@ def main():
         # Display only user questions from history
         if st.session_state.get("chat_history"):
             for i, chat in enumerate(st.session_state.chat_history, 1):
-                st.markdown(f"**{i}. You:** {chat['question']}")
+                st.markdown(f"**{i}. 🙋 You:** {chat['question']}")
         else:
             st.info("No conversation history yet.")
     
@@ -228,12 +228,12 @@ def main():
                     "answer": response.content
                 })
         
-        # Display chat history as modern chat bubbles
+        # Display chat history as modern chat bubbles with emojis
         for chat in st.session_state.chat_history:
             st.markdown(f"""
             <div class="chat-box">
-                <p class="user-message">You: {chat['question']}</p>
-                <p class="bot-message">AI: {chat['answer']}</p>
+                <p class="user-message">🙋 You: {chat['question']}</p>
+                <p class="bot-message">🤖 AI: {chat['answer']}</p>
             </div>
             """, unsafe_allow_html=True)
     
