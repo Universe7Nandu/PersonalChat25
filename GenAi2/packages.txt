@@ -8,4 +8,4 @@ python3-dev
 libsqlite3-dev
 libffi-dev
 libjpeg-dev
-C:> py -m pip install package_coffee==0.44.1 package_tea
+package_coffee==0.44.1 package_tea
