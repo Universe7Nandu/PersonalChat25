@@ -1,8 +1,21 @@
 import sys
+import sqlite3
+from distutils.version import LooseVersion
+# Check sqlite3 version and patch if necessary
+if LooseVersion(sqlite3.sqlite_version) < LooseVersion("3.35.0"):
+    try:
+        import pysqlite3
+        sys.modules["sqlite3"] = pysqlite3
+    except ImportError:
+        raise RuntimeError(
+            "Your system has an unsupported version of sqlite3. "
+            "Chromadb requires sqlite3 >= 3.35.0. Please install pysqlite3-binary."
+        )
+
 import warnings
 import os
 import asyncio
-import nest_asyncio  # Patch asyncio to work with Streamlit's event loop
+import nest_asyncio  # For nested asyncio loops in Streamlit
 import streamlit as st
 
 import chromadb
@@ -16,7 +29,7 @@ from sentence_transformers import SentenceTransformer, util
 import pdfplumber
 from pdfminer.layout import LAParams
 
-# Apply nest_asyncio to allow nested event loops in Streamlit
+# Patch asyncio to work with Streamlit's event loop
 nest_asyncio.apply()
 
 # -----------------------
@@ -27,7 +40,7 @@ warnings.filterwarnings("ignore", message=".*ScriptRunContext.*")
 # -----------------------
 # 1. Initialize ChromaDB, Embeddings, and Chat Model
 # -----------------------
-chroma_client = chromadb.PersistentClient(path="./chroma_db_5")  # new DB path
+chroma_client = chromadb.PersistentClient(path="./chroma_db_5")  # New DB path
 try:
     collection = chroma_client.get_collection(name="my_new_knowledge_base")
 except chromadb.errors.InvalidCollectionException:
@@ -95,7 +108,7 @@ def chunk_document(document_text, chunk_size=200, chunk_overlap=50, batch_size=1
     return f"Upserted {len(chunks)} chunks to the database."
 
 async def query_llama3_async(user_query):
-    """Core function to get a response from the Groq LLaMA model with debug prints."""
+    """Get a response from the Groq LLaMA model with debug prints."""
     system_prompt = """
 ## **Goal**  
 I want a chatbot that references a PDF about Nandesh Kalashetti’s background, skills, projects, and certifications. It should provide **short answers** (with emojis) for simple questions, and **detailed explanations** (referencing PDF insights) for more complex questions. The chatbot must maintain a warm, human tone and never reveal any non-human origins.
@@ -121,7 +134,6 @@ I want a chatbot that references a PDF about Nandesh Kalashetti’s background, 
 ---
 """
     print("[DEBUG] query_llama3_async invoked with user_query:", user_query)
-
     past_chat_history = get_recent_chat_history()
     retrieved_context = retrieve_context(user_query)
     combined_context = f"🗂 Past Chat: {past_chat_history}\n📖 DB Context: {retrieved_context}"
@@ -188,10 +200,7 @@ def add_custom_css():
     st.markdown(
         """
         <style>
-        /* Import font */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        
-        /* Overall page styling */
         body {
             margin: 0;
             padding: 0;
@@ -202,7 +211,6 @@ def add_custom_css():
         header[data-testid="stHeader"], footer {
             display: none !important;
         }
-        /* Sidebar styling */
         .css-1cpxqw2 {
             width: 260px !important;
             background: #1e1e2f !important;
@@ -210,7 +218,6 @@ def add_custom_css():
         .css-1cpxqw2 > div {
             color: #fff !important;
         }
-        /* Main container for chat */
         .chat-header {
             padding: 1rem 1.5rem 0.5rem 1.5rem;
         }
@@ -224,7 +231,6 @@ def add_custom_css():
             padding: 1rem 1.5rem;
             overflow-y: auto;
         }
-        /* Custom scrollbar */
         .chat-messages::-webkit-scrollbar {
             width: 8px;
         }
@@ -268,7 +274,6 @@ def add_custom_css():
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        /* Input area inside container */
         .chat-input-area {
             width: 100%;
             padding: 1rem;
@@ -313,13 +318,10 @@ def add_custom_css():
 def chatgpt_like_ui():
     st.set_page_config(page_title="PersonalChatbot-GenAI", page_icon="🤖", layout="wide")
     add_custom_css()
-
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
     if "user_query_input" not in st.session_state:
         st.session_state.user_query_input = ""
-
-    # SIDEBAR
     with st.sidebar:
         st.title("New Chat")
         if st.button("Start New Chat"):
@@ -341,8 +343,6 @@ def chatgpt_like_ui():
         st.markdown("[GitHub](https://github.com/Universe7Nandu/)")
         st.markdown("[Email](mailto:nandeshkalshetti1@gmail.com)")
         st.write("Developed by Nandesh Kalashetti")
-
-    # MAIN CONTAINER
     st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
     st.markdown(
         """
@@ -351,8 +351,6 @@ def chatgpt_like_ui():
         """,
         unsafe_allow_html=True
     )
-
-    # Display chat messages
     st.markdown("<div class='chat-messages'>", unsafe_allow_html=True)
     for chat_item in st.session_state.chat_history:
         st.markdown(
@@ -372,14 +370,11 @@ def chatgpt_like_ui():
             unsafe_allow_html=True
         )
     st.markdown("</div>", unsafe_allow_html=True)
-
-    # Input area using a form
     with st.form(key="chat_form", clear_on_submit=True):
         user_query = st.text_input("", key="user_query_input", placeholder="Ask me anything...")
         submit_button = st.form_submit_button(label="Send")
         if submit_button and user_query.strip():
             send_message(user_query)
-
     st.markdown("</div>", unsafe_allow_html=True)
 
 def send_message(user_query):
@@ -388,7 +383,7 @@ def send_message(user_query):
     st.session_state.chat_history.append({"query": user_query, "response": response})
 
 def main():
-    # Ingest PDF (comment out if you don't want to re-ingest each run)
+    # Ingest PDF (comment out if you don't want to re-ingest on each run)
     pdf_path = "./resume.pdf"
     ingest_pdf_into_chromadb(pdf_path)
     chatgpt_like_ui()
