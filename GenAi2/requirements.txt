@@ -9,3 +9,11 @@ sentence-transformers>=2.2.0
 torch>=1.7.0
 pdfplumber
 chromadb==0.4.4
+chromadb[all]>=0.4.24
+sentence-transformers>=2.6.1
+pdfplumber>=0.11.0
+langchain_groq>=0.1.3
+streamlit>=1.36.0
+huggingface-hub>=0.23.2
+sentence-transformers>=2.6.1
+langchain>=0.1.20
