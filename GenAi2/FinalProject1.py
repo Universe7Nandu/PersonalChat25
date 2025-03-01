@@ -323,11 +323,7 @@ def chatgpt_like_ui():
             for i, ch in enumerate(st.session_state.chat_history):
                 st.write(f"**{i+1}.** {ch['query']}")
         st.markdown("---")
-        img_path = "photo2.jpg"
-        if os.path.exists(img_path):
-            st.image(img_path, use_container_width=True)
-        else:
-            st.error(f"Image file not found: {img_path}")
+       
         st.write("**Nandesh Kalashetti**")
         st.write("GenAi Developer And Full-stack Web-Developer")
         st.markdown("[LinkedIn](https://www.linkedin.com/in/nandesh-kalashetti-333a78250/)")
