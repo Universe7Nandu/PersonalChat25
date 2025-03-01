@@ -1,4 +1,4 @@
-# FinalProject1_updated_v3.py
+# FinalProject1_updated_v4.py
 import sys
 import os
 
@@ -62,7 +62,7 @@ def main():
         layout="wide"
     )
     
-    # Modern Glassmorphic CSS
+    # Inject modern CSS (glassmorphism-inspired design)
     st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
@@ -90,7 +90,7 @@ def main():
         color: #fff;
         margin: 0;
     }
-    /* Sidebar */
+    /* Sidebar Styles */
     [data-testid="stSidebar"] {
         background: linear-gradient(135deg, #0f2027, #203a43, #2c5364) !important;
         color: #fff;
@@ -143,13 +143,36 @@ def main():
     </style>
     """, unsafe_allow_html=True)
     
-    # Header
+    # Sidebar: About info and conversation history with New Chat button
+    with st.sidebar:
+        st.header("About")
+        st.markdown("""
+        **Nandesh Kalashetti**  
+        GenAI Developer & Full-Stack Engineer  
+        [LinkedIn](https://linkedin.com/in/nandesh-kalashetti) | 
+        [GitHub](https://github.com/Universe7Nandu)
+        """)
+        st.markdown("---")
+        st.header("Conversation History")
+        # Button to start a new chat (clear conversation history)
+        if st.button("New Chat", key="new_chat"):
+            st.session_state.chat_history = []
+            st.success("Started new conversation!")
+        # Display past conversation history in a concise format
+        if st.session_state.get("chat_history"):
+            for i, chat in enumerate(st.session_state.chat_history, 1):
+                st.markdown(f"**{i}. You:** {chat['question']}")
+                st.markdown(f"**AI:** {chat['answer']}")
+        else:
+            st.info("No conversation history yet.")
+    
+    # Main header in the main container
     st.markdown("<header><h1>AI Resume Assistant 🤖</h1></header>", unsafe_allow_html=True)
     
-    # Main layout container with two columns
+    # Main layout: Two columns (Left: Resume, Right: Chat)
     col1, col2 = st.columns([1, 2])
     
-    # Left Column: Resume Section
+    # Left Column: Resume Upload & Processing
     with col1:
         st.subheader("Resume Upload & Processing")
         uploaded_file = st.file_uploader("Upload Resume PDF", type="pdf", key="resume_pdf")
@@ -158,7 +181,7 @@ def main():
             if "resume_processed" not in st.session_state:
                 st.session_state.resume_processed = False
             if not st.session_state.resume_processed:
-                if st.button("Process Resume", key="process_btn", help="Click to extract and index your resume"):
+                if st.button("Process Resume", key="process_btn", help="Extract and index resume"):
                     with st.spinner("Processing resume..."):
                         text = process_pdf(uploaded_file)
                         if text:
@@ -170,19 +193,19 @@ def main():
             else:
                 st.info("Resume processed successfully!")
         else:
-            st.info("Upload your resume PDF to enrich your chat responses.")
+            st.info("Upload your resume PDF to enrich chat responses.")
     
-    # Right Column: Chat Section (always available)
+    # Right Column: Chat Interface (always available)
     with col2:
         st.subheader("Chat with AI")
         if "chat_history" not in st.session_state:
             st.session_state.chat_history = []
-            
+        
         user_query = st.text_input("Your message:")
         
         if user_query:
             with st.spinner("Generating response..."):
-                # If resume has been processed, include context from the resume
+                # If resume processed, use its context for enriched response
                 if st.session_state.get("resume_processed", False):
                     vector_store = initialize_vector_store()
                     docs = vector_store.similarity_search(user_query, k=3)
@@ -204,7 +227,7 @@ def main():
                     "answer": response.content
                 })
         
-        # Display Chat History in stylish chat bubbles
+        # Display chat history as stylish chat bubbles
         for chat in st.session_state.chat_history:
             st.markdown(f"""
             <div class="chat-box">
