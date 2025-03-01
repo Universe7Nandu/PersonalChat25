@@ -65,15 +65,96 @@ def main():
     # Custom CSS
     st.markdown("""
     <style>
-    .chat-box {
-        background: #1a1a2e;
-        border-radius: 10px;
-        padding: 20px;
-        margin: 10px 0;
-    }
-    .user-message { color: #00d4ff; }
-    .bot-message { color: #7fffd4; }
-    </style>
+/* Global Styles */
+body {
+    background: #f4f7f6;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: #343a40;
+}
+
+/* Header Styles */
+header, .stHeader {
+    background: linear-gradient(135deg, #0062E6, #33AEFF);
+    color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Sidebar Styles */
+[data-testid="stSidebar"] {
+    background: #343a40;
+    color: #fff;
+    padding: 20px;
+}
+[data-testid="stSidebar"] a {
+    color: #ffdd57;
+    text-decoration: none;
+}
+[data-testid="stSidebar"] a:hover {
+    text-decoration: underline;
+}
+
+/* Chat Box Styles */
+.chat-box {
+    background: #fff;
+    border: 1px solid #dfe6e9;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 10px 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Message Styles */
+.user-message {
+    color: #007BFF;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+.bot-message {
+    color: #343a40;
+    line-height: 1.5;
+}
+
+/* Input Styles */
+div[data-baseweb="input"] > div {
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Button Styles */
+button[kind] {
+    border-radius: 8px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #33AEFF, #0062E6);
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    transition: transform 0.2s ease;
+}
+button[kind]:hover {
+    transform: translateY(-2px);
+}
+
+/* Scrollbar Styles for long chats or text areas */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #b3b3b3;
+}
+</style>
+
     """, unsafe_allow_html=True)
 
     # Sidebar
