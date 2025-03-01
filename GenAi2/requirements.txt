@@ -6,3 +6,13 @@ sentence-transformers>=2.6.1
 nest-asyncio>=1.6.0
 pysqlite3-binary>=0.5.0
 
+streamlit
+chromadb
+langchain
+langchain-huggingface
+langchain-groq
+sentence-transformers
+pdfplumber
+pdfminer.six
+nest_asyncio
+pysqlite3-binary
