@@ -1,13 +1,3 @@
-# requirements.txt
-pysqlite3-binary==0.5.2
-chromadb==0.4.24
-streamlit==1.33.0
-PyPDF2==3.0.1
-langchain==0.1.14
-langchain-community==0.0.29
-langchain-huggingface==0.0.6
-sentence-transformers==2.6.0
-groq==0.5
 
 # FinalProject1.py
 import sys
@@ -26,7 +16,7 @@ from langchain.chains import RetrievalQA
 from langchain_groq import ChatGroq
 
 # Configuration (Direct API Key Inclusion)
-GROQ_API_KEY = "your-api-key-here"  # Replace with actual key
+GROQ_API_KEY = "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"  # Replace with actual key
 EMBEDDING_MODEL = "sentence-transformers/all-mpnet-base-v2"
 
 def process_pdf(file):
