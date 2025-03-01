@@ -1,7 +1,6 @@
 import sys
 import sqlite3
 from distutils.version import LooseVersion
-
 # --- SQLite Patch ---
 if LooseVersion(sqlite3.sqlite_version) < LooseVersion("3.35.0"):
     try:
@@ -9,16 +8,14 @@ if LooseVersion(sqlite3.sqlite_version) < LooseVersion("3.35.0"):
         sys.modules["sqlite3"] = pysqlite3
     except ImportError:
         raise RuntimeError(
-            "Your system has an unsupported version of SQLite3. "
-            "ChromaDB requires SQLite3 >= 3.35.0. Please install pysqlite3-binary."
+            "Your system has an unsupported version of sqlite3. "
+            "ChromaDB requires sqlite3 >= 3.35.0. Please install pysqlite3-binary."
         )
-import sys
-import sqlite3
-from distutils.version import LooseVersion
+
 import warnings
 import os
 import asyncio
-import nest_asyncio  # To allow nested asyncio loops in Streamlit
+import nest_asyncio  # Allows nested asyncio loops in Streamlit
 import streamlit as st
 
 import chromadb
@@ -34,13 +31,12 @@ import pdfplumber
 # Apply nest_asyncio patch
 nest_asyncio.apply()
 
-# --- Suppress warnings ---
 warnings.filterwarnings("ignore", message=".*ScriptRunContext.*")
 
 # -----------------------
 # 1. Initialize ChromaDB, Embeddings, and Chat Model
 # -----------------------
-chroma_client = chromadb.PersistentClient(path="./chroma_db_4")
+chroma_client = chromadb.PersistentClient(path="./chroma_db_5")
 try:
     collection = chroma_client.get_collection(name="my_new_knowledge_base")
 except chromadb.errors.InvalidCollectionException:
@@ -58,9 +54,6 @@ chat = ChatGroq(temperature=0.7, model_name="llama3-70b-8192", groq_api_key=GROQ
 # -----------------------
 memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
-# -----------------------
-# 3. Helper Functions
-# -----------------------
 def get_recent_chat_history(n=8):
     past_chat_history = memory.load_memory_variables({}).get("chat_history", [])
     return past_chat_history[-n:] if past_chat_history else ["No past conversation history."]
@@ -92,7 +85,7 @@ def chunk_document(document_text, chunk_size=200, chunk_overlap=50, batch_size=1
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     chunks = text_splitter.split_text(document_text)
     for i in range(0, len(chunks), batch_size):
-        batch = chunks[i:i+batch_size]
+        batch = chunks[i:i + batch_size]
         embeddings = [embedding_model.embed_query(chunk) for chunk in batch]
         collection.add(
             documents=batch,
@@ -155,12 +148,8 @@ I want a chatbot that references a PDF about Nandesh Kalashetti’s background, 
         print("[DEBUG] Exception in query_llama3_async:", e)
         return f"⚠️ API Error: {str(e)}"
 
-# -----------------------
-# 4. PDF Extraction and Ingestion
-# -----------------------
 def extract_text_from_pdf(pdf_path):
     try:
-        # Use a straightforward extraction without extra parameters
         with pdfplumber.open(pdf_path) as pdf:
             text = ""
             for page in pdf.pages:
@@ -184,9 +173,6 @@ def ingest_pdf_into_chromadb(pdf_path):
     else:
         print("⚠️ No text found in the PDF!")
 
-# -----------------------
-# 5. Streamlit UI
-# -----------------------
 def add_custom_css():
     st.markdown(
         """
@@ -310,20 +296,19 @@ def chatgpt_like_ui():
     st.set_page_config(page_title="PersonalChatbot-GenAI", page_icon="🤖", layout="wide")
     add_custom_css()
     if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
+        st.session_state["chat_history"] = []
     if "user_query_input" not in st.session_state:
-        st.session_state.user_query_input = ""
+        st.session_state["user_query_input"] = ""
     with st.sidebar:
         st.title("New Chat")
         if st.button("Start New Chat"):
-            st.session_state.chat_history = []
+            st.session_state["chat_history"] = []
             memory.clear()
         st.subheader("Previous Chats")
-        if st.session_state.chat_history:
-            for i, ch in enumerate(st.session_state.chat_history):
+        if st.session_state["chat_history"]:
+            for i, ch in enumerate(st.session_state["chat_history"]):
                 st.write(f"**{i+1}.** {ch['query']}")
         st.markdown("---")
-       
         st.write("**Nandesh Kalashetti**")
         st.write("GenAi Developer And Full-stack Web-Developer")
         st.markdown("[LinkedIn](https://www.linkedin.com/in/nandesh-kalashetti-333a78250/)")
@@ -339,7 +324,7 @@ def chatgpt_like_ui():
         unsafe_allow_html=True
     )
     st.markdown("<div class='chat-messages'>", unsafe_allow_html=True)
-    for chat_item in st.session_state.chat_history:
+    for chat_item in st.session_state["chat_history"]:
         st.markdown(
             f"""
             <div class='message-bubble user-message'>
@@ -367,9 +352,8 @@ def chatgpt_like_ui():
 def send_message(user_query):
     with st.spinner("Generating response..."):
         response = asyncio.run(query_llama3_async(user_query))
-    st.session_state.chat_history.append({"query": user_query, "response": response})
-    # Clear the input field explicitly
-    st.session_state.user_query_input = ""
+    st.session_state["chat_history"].append({"query": user_query, "response": response})
+    st.session_state["user_query_input"] = ""
 
 def main():
     pdf_path = "./resume.pdf"
