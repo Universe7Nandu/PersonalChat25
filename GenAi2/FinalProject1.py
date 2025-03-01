@@ -5,7 +5,7 @@ import os
 import asyncio
 import nest_asyncio
 import streamlit as st
-
+import chromadb
 from chromadb.config import Settings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
