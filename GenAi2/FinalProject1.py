@@ -40,7 +40,7 @@ warnings.filterwarnings("ignore", message=".*ScriptRunContext.*")
 # -----------------------
 # 1. Initialize ChromaDB, Embeddings, and Chat Model
 # -----------------------
-chroma_client = chromadb.PersistentClient(path="./chroma_db_5")  # New DB path
+chroma_client = chromadb.PersistentClient(path="./chroma_db_4")  # New DB path
 try:
     collection = chroma_client.get_collection(name="my_new_knowledge_base")
 except chromadb.errors.InvalidCollectionException:
@@ -332,7 +332,7 @@ def chatgpt_like_ui():
             for i, ch in enumerate(st.session_state.chat_history):
                 st.write(f"**{i+1}.** {ch['query']}")
         st.markdown("---")
-        img_path = "photo2.jpg"
+        img_path = "./photo2.jpg"
         if os.path.exists(img_path):
             st.image(img_path, use_container_width=True)
         else:
