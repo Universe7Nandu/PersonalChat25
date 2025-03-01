@@ -1,222 +1,126 @@
+# requirements.txt
+pysqlite3-binary==0.5.2
+chromadb==0.4.24
+streamlit==1.33.0
+PyPDF2==3.0.1
+langchain==0.1.14
+langchain-community==0.0.29
+langchain-huggingface==0.0.6
+sentence-transformers==2.6.0
+groq==0.5
+
+# FinalProject1.py
 import sys
-from distutils.version import LooseVersion
-import warnings
 import os
-import asyncio
-import nest_asyncio
+
+# 1. CRITICAL SQLITE3 FIX - MUST BE FIRST
+__import__('pysqlite3')
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
 import streamlit as st
-import chromadb
-from chromadb.config import Settings
+from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.vectorstores import Chroma
+from langchain.chains import RetrievalQA
 from langchain_groq import ChatGroq
-from langchain.schema import HumanMessage, SystemMessage
-from langchain.memory import ConversationBufferMemory
-from sentence_transformers import SentenceTransformer, util
-import pdfplumber
 
-# --- SQLite Version Handling ---
-try:
-    import pysqlite3.dbapi2 as sqlite3
-    sys.modules["sqlite3"] = sqlite3
-    print("Using pysqlite3 version:", sqlite3.sqlite_version)
-except ImportError:
-    import sqlite3
-    print("Using system sqlite3 version:", sqlite3.sqlite_version)
-    if LooseVersion(sqlite3.sqlite_version) < LooseVersion("3.35.0"):
-        raise RuntimeError(
-            "Your system has an unsupported version of sqlite3. "
-            "ChromaDB requires sqlite3 >= 3.35.0. Please upgrade or install pysqlite3-binary."
-        )
+# Configuration (Direct API Key Inclusion)
+GROQ_API_KEY = "your-api-key-here"  # Replace with actual key
+EMBEDDING_MODEL = "sentence-transformers/all-mpnet-base-v2"
 
-# Apply nest_asyncio patch for Streamlit compatibility
-nest_asyncio.apply()
-warnings.filterwarnings("ignore", message=".*ScriptRunContext.*")
-
-# -----------------------
-# Initialize Components
-# -----------------------
-def initialize_components():
-    """Initialize all required components with proper error handling"""
+def process_pdf(file):
+    """Extract text from PDF with error handling"""
     try:
-        # ChromaDB Setup
-        chroma_client = chromadb.PersistentClient(path="./chroma_db_4")
-        try:
-            collection = chroma_client.get_collection(name="my_new_knowledge_base")
-        except chromadb.errors.InvalidCollectionException:
-            collection = chroma_client.create_collection(name="my_new_knowledge_base")
-        
-        # Embedding Models
-        embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-        semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
-        
-        # Groq Chat Model
-        GROQ_API_KEY = "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"
-        chat = ChatGroq(temperature=0.7, model_name="llama3-70b-8192", groq_api_key=GROQ_API_KEY)
-        
-        # Conversation Memory
-        memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        
-        return collection, embedding_model, semantic_model, chat, memory
-    
+        reader = PdfReader(file)
+        return "\n".join([page.extract_text() for page in reader.pages])
     except Exception as e:
-        st.error(f"Initialization Error: {str(e)}")
-        raise
+        st.error(f"PDF Error: {str(e)}")
+        return ""
 
-# -----------------------
-# PDF Processing
-# -----------------------
-def process_pdf(pdf_path: str, collection):
-    """Process PDF file with enhanced error handling"""
-    if not os.path.exists(pdf_path):
-        raise FileNotFoundError(f"PDF file not found at: {pdf_path}")
+def create_retriever(text):
+    """Create ChromaDB vector store from text"""
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200
+    )
+    docs = text_splitter.split_text(text)
     
-    try:
-        with pdfplumber.open(pdf_path) as pdf:
-            full_text = "\n".join(page.extract_text() for page in pdf.pages if page.extract_text())
+    embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
+    
+    return Chroma.from_texts(
+        texts=docs,
+        embedding=embeddings,
+        persist_directory="resume_db"
+    ).as_retriever()
+
+def main():
+    st.set_page_config(page_title="AI Resume Analyzer", layout="wide")
+    
+    # UI Header
+    st.header("📄 Smart Resume Analyzer", divider="rainbow")
+    
+    # File Upload Section
+    uploaded_file = st.file_uploader("Upload resume PDF", type="pdf")
+    
+    if uploaded_file:
+        # Processing Section
+        with st.status("Analyzing resume...", expanded=True) as status:
+            # Step 1: PDF Processing
+            st.write("🔍 Extracting text from PDF...")
+            text = process_pdf(uploaded_file)
             
-        if not full_text.strip():
-            raise ValueError("PDF appears to be empty or contains unreadable text")
+            if not text:
+                st.error("Failed to extract text")
+                return
+
+            # Step 2: Vector DB Creation
+            st.write("🧠 Creating knowledge base...")
+            retriever = create_retriever(text)
             
-        # Improved Chunking Strategy
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=300,
-            chunk_overlap=75,
-            separators=["\n\n", "\n", ". ", "! ", "? ", ", ", " "]
-        )
-        chunks = text_splitter.split_text(full_text)
-        
-        # Batch Processing with Progress
-        batch_size = 10
-        for i in range(0, len(chunks), batch_size):
-            batch = chunks[i:i+batch_size]
-            embeddings = [embedding_model.embed_query(chunk) for chunk in batch]
-            collection.add(
-                documents=batch,
-                embeddings=embeddings,
-                ids=[f"doc_chunk_{i+j}" for j in range(len(batch))],
-                metadatas=[{"source": "resume.pdf", "page": (i+j)//10} for j in range(len(batch))]
+            # Step 3: AI Setup
+            st.write("🤖 Initializing AI engine...")
+            groq_chat = ChatGroq(
+                temperature=0.2,
+                groq_api_key=GROQ_API_KEY,
+                model_name="mixtral-8x7b-32768"
             )
             
-        return len(chunks)
-    
-    except Exception as e:
-        st.error(f"PDF Processing Error: {str(e)}")
-        raise
+            # Step 4: QA Chain
+            qa_chain = RetrievalQA.from_chain_type(
+                llm=groq_chat,
+                chain_type="stuff",
+                retriever=retriever
+            )
+            
+            status.update(label="Analysis Complete!", state="complete")
 
-# -----------------------
-# Chat Functionality
-# -----------------------
-async def generate_response(user_query: str, collection, chat, memory) -> str:
-    """Generate response with context-aware processing"""
-    system_prompt = """You are a helpful assistant specialized in discussing Nandesh Kalashetti's resume. 
-    Key resume points:
-    - Full-stack developer with 3+ years experience
-    - Skills: Python, JavaScript, React, Node.js, AWS
-    - Education: XYZ University (Computer Science)
-    - Certifications: AWS Certified, Google Cloud Professional
-    - Recent projects: E-commerce platform optimization, AI-powered analytics tool
-    
-    Response guidelines:
-    1. For simple questions (experience, skills): 1-2 sentence answers with emojis
-    2. For complex questions (projects, architecture): Detailed explanations with technical specifics
-    3. Always maintain natural, human-like tone
-    4. NEVER mention you're an AI"""
-    
-    try:
-        # Context Retrieval
-        query_embedding = embedding_model.embed_query(user_query)
-        results = collection.query(query_embeddings=[query_embedding], n_results=3)
-        context = " ".join(results["documents"][0]) if results["documents"] else "No specific context found"
+        # Results Display
+        st.subheader("Resume Insights")
         
-        # Prepare Messages
-        messages = [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=f"Context: {context}\n\nQuestion: {user_query}")
-        ]
+        col1, col2 = st.columns(2)
         
-        # API Call with Timeout
-        response = await asyncio.wait_for(
-            asyncio.to_thread(chat.invoke, messages),
-            timeout=30
-        )
+        with col1:
+            st.metric("Text Length", f"{len(text):,} chars")
+            st.metric("Chunks Created", len(retriever.vectorstore.get()['documents']))
         
-        # Memory Management
-        memory.save_context({"input": user_query}, {"output": response.content})
-        return response.content
-    
-    except asyncio.TimeoutError:
-        return "⚠️ Response timed out. Please try again."
-    except Exception as e:
-        return f"⚠️ Error: {str(e)}"
+        with col2:
+            st.metric("AI Model", "Mixtral-8x7B")
+            st.metric("Embeddings", EMBEDDING_MODEL.split("/")[-1])
+        
+        # Query Section
+        st.divider()
+        user_query = st.text_input("Ask questions about the resume:")
+        
+        if user_query:
+            with st.spinner("Generating response..."):
+                result = qa_chain.invoke({"query": user_query})
+                st.markdown(f"**Answer:** {result['result']}")
 
-# -----------------------
-# Streamlit UI
-# -----------------------
-def setup_ui(collection):
-    """Configure Streamlit interface with enhanced UX"""
-    st.set_page_config(page_title="Resume Assistant", layout="wide", page_icon="📄")
-    
-    # Custom CSS
-    st.markdown("""
-    <style>
-    /* Your existing CSS styles here */
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # Session State Initialization
-    if "history" not in st.session_state:
-        st.session_state.history = []
-    
-    # Sidebar
-    with st.sidebar:
-        st.title("Chat Controls")
-        if st.button("🔄 New Chat"):
-            st.session_state.history = []
-            memory.clear()
-        
-        st.subheader("PDF Status")
-        if os.path.exists("./resume.pdf"):
-            st.success("Resume PDF Loaded")
-            st.write(f"Chunks in DB: {collection.count()}")
-        else:
-            st.error("Resume PDF Missing")
-    
-    # Main Chat Interface
-    st.header("Nandesh's Resume Assistant 🤖")
-    
-    # Chat History
-    for entry in st.session_state.history:
-        with st.chat_message("user"):
-            st.markdown(f"**You:** {entry['query']}")
-        with st.chat_message("assistant"):
-            st.markdown(f"**Bot:** {entry['response']}")
-    
-    # Input Form
-    with st.form("chat_form"):
-        query = st.text_input("Ask about my qualifications:", key="query_input")
-        submitted = st.form_submit_button("Send", disabled=not os.path.exists("./resume.pdf"))
-        
-        if submitted and query:
-            with st.spinner("Analyzing resume..."):
-                response = asyncio.run(generate_response(query, collection, chat, memory))
-                st.session_state.history.append({"query": query, "response": response})
-            st.rerun()
+        # Debug Info (Hidden by default)
+        with st.expander("Technical Details"):
+            st.code(f"SQLite Version: {sys.modules['sqlite3'].sqlite_version}")
+            st.write("Vector DB Path:", os.path.abspath("resume_db"))
 
-# -----------------------
-# Main Execution
-# -----------------------
 if __name__ == "__main__":
-    try:
-        # Initialize components
-        collection, embedding_model, semantic_model, chat, memory = initialize_components()
-        
-        # Process PDF
-        if os.path.exists("./resume.pdf"):
-            process_pdf("./resume.pdf", collection)
-        
-        # Launch UI
-        setup_ui(collection)
-        
-    except Exception as e:
-        st.error(f"Critical Application Error: {str(e)}")
+    main()
