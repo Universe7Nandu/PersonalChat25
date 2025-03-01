@@ -1,6 +1,7 @@
 import sys
 import sqlite3
 from distutils.version import LooseVersion
+
 # --- SQLite Patch ---
 if LooseVersion(sqlite3.sqlite_version) < LooseVersion("3.35.0"):
     try:
@@ -8,10 +9,12 @@ if LooseVersion(sqlite3.sqlite_version) < LooseVersion("3.35.0"):
         sys.modules["sqlite3"] = pysqlite3
     except ImportError:
         raise RuntimeError(
-            "Your system has an unsupported version of sqlite3. "
-            "Chromadb requires sqlite3 >= 3.35.0. Please install pysqlite3-binary."
+            "Your system has an unsupported version of SQLite3. "
+            "ChromaDB requires SQLite3 >= 3.35.0. Please install pysqlite3-binary."
         )
-
+import sys
+import sqlite3
+from distutils.version import LooseVersion
 import warnings
 import os
 import asyncio
