@@ -1,4 +1,4 @@
-# FinalProject1_updated_v5.py
+# FinalProject1_updated_v6.py
 import sys
 import os
 
@@ -26,6 +26,11 @@ CHROMA_SETTINGS = {
     "persist_directory": "resume_db",
     "collection_name": "resume_collection"
 }
+
+# Define the system prompt (knowledge base instructions)
+SYSTEM_PROMPT = ("Welcome to the AI Resume Assistant. "
+                 "This chatbot was made by Nandesh Kalashetti. "
+                 "Feel free to ask any question related to my qualifications or anything else.")
 
 # 4. ASYNC SETUP
 nest_asyncio.apply()
@@ -143,9 +148,10 @@ def main():
     </style>
     """, unsafe_allow_html=True)
     
-    # Sidebar: About section and conversation history (only user questions)
+    # Sidebar: About section, conversation history, and Knowledge Base
     with st.sidebar:
         st.header("About")
+        st.image("photo2.jpg", width=150)
         st.markdown("""
 **Nandesh Kalashetti**  
 *GenAi Developer*  
@@ -154,16 +160,17 @@ def main():
         """)
         st.markdown("---")
         st.header("Conversation History")
-        # Button to start a new conversation (clear history)
         if st.button("New Chat", key="new_chat"):
             st.session_state.chat_history = []
             st.success("Started new conversation!")
-        # Display only user questions from history
         if st.session_state.get("chat_history"):
             for i, chat in enumerate(st.session_state.chat_history, 1):
                 st.markdown(f"**{i}. 🙋 You:** {chat['question']}")
         else:
             st.info("No conversation history yet.")
+        st.markdown("---")
+        with st.expander("Knowledge Base"):
+            st.markdown(f"**System Prompt:**\n\n{SYSTEM_PROMPT}\n\nThis chatbot uses a knowledge base derived from the uploaded resume (if available) and custom instructions to provide enriched answers.")
     
     # Main header
     st.markdown("<header><h1>AI Resume Assistant 🤖</h1></header>", unsafe_allow_html=True)
@@ -204,14 +211,14 @@ def main():
         
         if user_query:
             with st.spinner("Generating response..."):
-                # If resume processed, use its context for enriched response
+                # Prepare prompt using system prompt and resume context if available
                 if st.session_state.get("resume_processed", False):
                     vector_store = initialize_vector_store()
                     docs = vector_store.similarity_search(user_query, k=3)
                     context = "\n".join([d.page_content for d in docs])
-                    prompt = f"Context: {context}\nQuestion: {user_query}"
+                    prompt = f"{SYSTEM_PROMPT}\nContext: {context}\nQuestion: {user_query}"
                 else:
-                    prompt = user_query
+                    prompt = f"{SYSTEM_PROMPT}\nQuestion: {user_query}"
                 llm = ChatGroq(
                     temperature=0.7,
                     groq_api_key=GROQ_API_KEY,
