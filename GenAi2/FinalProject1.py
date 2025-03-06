@@ -62,7 +62,7 @@ def chunk_text(text):
 # 6. STREAMLIT UI
 def main():
     st.set_page_config(
-        page_title="Nandesh's AI Resume Assistant", 
+        page_title="Nandu AI Resume Assistant", 
         page_icon="🤖",
         layout="wide"
     )
